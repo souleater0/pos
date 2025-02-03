@@ -378,17 +378,178 @@ $(document).ready(function () {
         loadProducts(category);
     });
 
-    $(document).on('click', '#pay', function () {
-        if (table.rows().count() <= 0) {
-                Swal.fire({
-                    title: "Please add items to the cart first.",
-                    icon: "warning",
-                    draggable: true
-                });
+    function generateReceiptContent() {
+        let date = new Date();
+        let formattedDate = date.toISOString().slice(0, 10) + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        let invoiceNumber = Math.floor(100000 + Math.random() * 900000);
+        let customerName = $('#customer-name').val() || "N/A";
+        let paymentMethod = $('#payment-method').val();
+
+        // Initialize variables for total calculations
+        let totalSubtotal = 0;
+        let totalDiscount = 0;
+        let totalAmountAfterDiscount = 0;
+
+        let receiptContent = `
+            <div class='receipt text-dark' style='width: 100%; margin: 0; padding: 0px; font-family: Arial, sans-serif; text-align: left;'>
+                <h4 style='text-align: center; margin: 5px 0;'>Takoyame Takoyaki</h4>
+                <div style='border-top: 1px dashed black; border-bottom: 1px dashed black; padding: 2px 0;'>
+                    <p style="margin:5px 2px;"><b>Address:</b> Sto. Nino Plaridel, Bulacan <br><b>Contact No:</b> 09392887055</p>
+                </div>
+                <div style='border-top: none; border-bottom: 1px dashed black; padding: 2px 0;'>
+                    <p style="margin:5px 2px;"><b>Invoice:</b> ${invoiceNumber} <br><b>Cashier:</b> Admin <br><b>Time:</b> ${formattedDate}</p>
+                    <p><b>Customer:</b> ${customerName} <br><b>Payment Type:</b> ${paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)}</p>
+                </div>
+                <table width='100%' style='border-collapse: collapse; margin-top: 5px; text-align: left;'>
+                    <tr><th>Item</th><th>Qty</th><th>Price</th><th>Amt</th></tr>
+        `;
+
+        // Extract data from the DataTable
+        let table = $('#cart').DataTable();
+
+        table.rows().every(function() {
+            let row = this.node();
+            let name = $(row).find('td:nth-child(1)').text(); // Item name
+            let qty = parseInt($(row).find('.qty-input').val()) || 1; // Quantity
+            let priceText = $(row).find('td:nth-child(4)').text().replace(/[^\d.]/g, ''); // Price (remove non-numeric characters)
+            let unitPrice = parseFloat(priceText); // Correct unit price (no change based on quantity)
+
+            let discount = parseFloat($(row).find('.discount-dropdown').val()) || 0; // Discount percentage
+            let subtotal = unitPrice * qty; // Subtotal before discount
+            let itemDiscountAmount = (subtotal * discount) / 100; // Discount for this item
+
+            let discountedSubtotal = subtotal - itemDiscountAmount; // Discounted subtotal for the item
+            totalSubtotal += subtotal; // Total before discount
+            totalAmountAfterDiscount += discountedSubtotal; // Total after discount applied
+            let globalDiscount = parseFloat($('#discount').val()) || 0;
+            totalDiscount = (totalAmountAfterDiscount * globalDiscount) / 100; // Total discount for all items
+
+            let discountLabel = itemDiscountAmount > 0 ? `<br><i>Discount ${discount}% (-₱${itemDiscountAmount.toFixed(2)})</i>` : '';
+
+            receiptContent += `
+                <tr>
+                    <td>${name}${discountLabel}</td>
+                    <td>${qty}</td>
+                    <td>₱${unitPrice.toFixed(2)}</td>
+                    <td>₱${discountedSubtotal.toFixed(2)}</td>
+                </tr>`;
+        });
+
+        // Calculate final values for the receipt
+        let totalBalance = totalAmountAfterDiscount - totalDiscount; // This is the total after all discounts
+        let paidAmount = parseFloat($('#pay-amount').val()) || 0; // Paid amount from user input
+        let totalChange = paidAmount - totalBalance; // Change to be returned to the customer
+
+        // Update the receipt content with correct totals
+        receiptContent += `
+            </table>
+            <div style='border-top: 1px dashed black; padding: 5px 0; margin:5px 2px;'>
+                <p>
+                    <b>Subtotal:</b> ₱${totalAmountAfterDiscount.toFixed(2)}<br>
+                    <b>Discount:</b> ₱${totalDiscount.toFixed(2)}<br>
+                    <b>Total:</b> ₱${totalBalance.toFixed(2)}<br>
+                    <b>Paid:</b> ₱${paidAmount.toFixed(2)}<br>
+                    <b>Change:</b> ₱${totalChange.toFixed(2)}
+                </p>
+            </div>
+            <p style='text-align: center; margin: 5px 0;'>Thank You - Please Come Again!</p>
+        </div>
+        `;
+
+        return { content: receiptContent, invoiceNumber };
+    }
+
+$(document).on('click', '#pay', function () {
+    updateTotal();
+    if (table.rows().count() <= 0) {
+        Swal.fire({
+            title: "Please add items to the cart first.",
+            icon: "warning",
+            draggable: true
+        });
+    } else {
+        let totalBalance = parseFloat($('#totalBalance').text().replace(/[^\d.]/g, ''));
+        let payAmount = parseFloat($('#pay-amount').val()) || 0;
+
+        if (payAmount < totalBalance) {
+            Swal.fire({
+                title: "Insufficient funds. Please check your payment amount.",
+                icon: "error",
+                draggable: true
+            });
         } else {
-            
+            Swal.fire({
+                title: "Payment successful!",
+                icon: "success",
+                draggable: true
+            }).then(() => {
+                // After clicking "OK" on the success message, generate the receipt content
+                let { content, invoiceNumber } = generateReceiptContent();
+
+                // Insert receipt content into the modal's preview area
+                $('#receipt-preview-content').html(content);
+
+                // Show the print confirmation modal
+                $('#confirm-print-modal').modal('show');
+
+                // Reset and prepare for the next transaction if needed
+                // $('#pay-amount').val("");
+                // $('#customer-name').val("");
+                // $('#discount').prop('selectedIndex', 0);
+                // $('#payment-method').prop('selectedIndex', 0);
+                // table.clear().draw();
+                updateTotal();
+            });
         }
+    }
+});
+
+    $('#confirm-print').click(function() {
+    let printWindow = window.open('', '', 'width=300,height=600');
+
+        // Inject CSS to remove margins
+        let style = `
+            <style>
+            @media print {
+                body {
+                    margin: 0;
+                    padding: 0;
+                    font-family: Arial, sans-serif;
+                }
+                .receipt {
+                    width: 100%; /* Use the full width of the paper */
+                    margin: 0;
+                    padding: 0;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+                td, th {
+                    padding: 5px;
+                    font-size: 9px; /* Set font size of the items to 9px */
+                }
+                h4 {
+                    margin: 0;
+                    font-size: 12px; /* Optional: Set the title font size to 9px */
+                }
+                .receipt p {
+                    font-size: 9px; /* Optional: Set paragraph font size to 9px */
+                }
+            }
+            </style>
+        `;
+
+        printWindow.document.write(style + $('#receipt-preview-content').html());
+        printWindow.document.close();
+
+        printWindow.print();
+
+        setTimeout(function() {
+            printWindow.close(); // Close the window after printing
+        }, 1000);
     });
+
 });
 
 </script>
