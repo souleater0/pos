@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap'); 
+ 
+  .table thead th{
+    background: #f8f9fd;
+    color: #060606;
+  }
+  .table-cs-color{
+    --bs-table-color: #000;
+    /* --bs-table-bg: #FFF; */
+    --bs-table-border-color: #cac8e6;
+    --bs-table-striped-bg: #d5d3f2;
+    --bs-table-striped-color: #000;
+    --bs-table-active-bg: #cac8e6;
+    --bs-table-active-color: #000;
+    --bs-table-hover-bg: #dee2e6;
+    --bs-table-hover-color: #000;
+  }
+  .card .card-header:not(.border-0) h5:after{
+    content: "";
+    height: 30px;
+    width: 3px;
+    background: #26B1FF;
+    position: absolute;
+    left: 0px;
+    top: 15px;
+    border-radius: 0 3px 3px 0;
+  }
+  select.dt-input{
+    margin-right: 10px;
+  }
+  .open-sans-regular span, .open-sans-regular h1, .open-sans-regular h2, .open-sans-regular h3, .open-sans-regular h4, .open-sans-regular p {
+    font-family: "Open Sans", sans-serif !important;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
+    font-variation-settings: "wdth" 100;
+  }
+  .open-sans-semibold span, .open-sans-semibold h1, .open-sans-semibold h2, .open-sans-semibold h3, .open-sans-semibold h4, .open-sans-semibold p{
+    font-family: "Open Sans", sans-serif !important;
+    font-optical-sizing: auto;
+    font-weight: 500;
+    font-style: normal;
+    font-variation-settings: "wdth" 100;
+  }
+  .open-sans-bold span, .open-sans-bold h1, .open-sans-bold h2, .open-sans-bold h3, .open-sans-bold h4, .open-sans-bold p{
+    font-family: "Open Sans", sans-serif !important;
+    font-optical-sizing: auto;
+    font-weight: 700;
+    font-style: normal;
+    font-variation-settings: "wdth" 100;
+  }
