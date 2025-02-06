@@ -1,3 +1,4 @@
+<?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_pos')){?>
 <div class="body-wrapper-inner">
     <div class="container-fluid mw-100">
         <div class="card shadow-sm p-3">
@@ -5,15 +6,19 @@
 
             <!-- Responsive Category Buttons -->
             <div class="category-container d-flex flex-nowrap overflow-auto">
-                <button class="btn btn-success category-btn" data-category="all">All Categories</button>
-                <button class="btn btn-light category-btn" data-category="main">Main Dish</button>
-                <button class="btn btn-light category-btn" data-category="addons">Addons</button>
+            <button class="btn btn-success category-btn" data-category="all">All Categories</button>
+            <?php 
+            $categories = getCategories($pdo); // Function to fetch categories from the database
+            foreach ($categories as $category) {
+                echo "<button class='btn btn-light category-btn' data-category='{$category['category_name']}'>{$category['category_name']}</button>";
+            }
+            ?>
             </div>
 
             <div class="row mt-3">
                 <!-- Product List (Left) -->
                 <div class="col-lg-6 col-md-4 col-12">
-                    <div class="row" id="product-list">
+                    <div class="row" id="product-list" style="max-height: 500px; overflow-y: auto;">
                         <!-- Products will be dynamically loaded here -->
                     </div>
                 </div>
@@ -27,10 +32,13 @@
                         </div>
                         <div class="col-6">
                             <label class="text-dark fw-bold">Discount</label>
-                            <select class="form-control" id="discount">
-                                <option value="0">No Discount</option>
-                                <option value="5">5% Discount</option>
-                                <option value="10">10% Discount</option>
+                            <select class="selectpicker form-control" id="discount" data-live-search="true">
+                                <?php 
+                                $discounts = getDiscounts($pdo); // Function to fetch discount from the database
+                                foreach ($discounts as $discount) {
+                                    echo "<option value='{$discount['discount_percentage']}'>{$discount['discount_name']}</option>";
+                                }
+                                ?>
                             </select>
                         </div>
                     </div>
@@ -41,9 +49,13 @@
                         </div>
                         <div class="col-6">
                             <label class="text-dark fw-bold">Payment Method</label>
-                            <select class="form-control" id="payment-method">
-                                <option value="cash">Cash</option>
-                                <option value="gcash">Gcash</option>
+                            <select class="selectpicker form-control" id="payment-method" data-live-search="true">
+                                <?php 
+                                $payment_types = getPaymentTypes($pdo); // Function to fetch discount from the database
+                                foreach ($payment_types as $payment_type) {
+                                    echo "<option value='{$payment_type['payment_name']}'>{$payment_type['payment_name']}</option>";
+                                }
+                                ?>
                             </select>
                         </div>
                     </div>
@@ -185,10 +197,16 @@
         -webkit-appearance: none;
         margin: 0;
     }
+    .table-responsive {
+    max-height: 300px; /* Adjust the height to show only 3 entries */
+    overflow-y: auto;
+    }
 </style>
 
 <script>
 $(document).ready(function () {
+    var csrfToken = "<?php echo $_SESSION['csrf_token']; ?>";
+
     // Initialize DataTable
     let table = $('#cart').DataTable({
         paging: false,
@@ -209,13 +227,46 @@ $(document).ready(function () {
     });
 
 
-    let products = [
-        { id: 1, name: "Bacon Cheesy Takoyaki", price: 105.00, discount: 0, image: "assets/images/products/image.png", category: "all" },
-        { id: 2, name: "Ultimate Cheesy Takoyaki", price: 85.00, discount: 0, image: "assets/images/products/image.png", category: "main" },
-        { id: 3, name: "Baby Octo Takoyaki", price: 120.00, discount: 0, image: "assets/images/products/image.png", category: "addons" }
-    ];
-
+    let products = [];
     let cart = [];
+
+
+    // Fetch products from the server
+    async function fetchProducts() {
+        try {
+            const response = await fetch('admin/process/admin_action.php', {
+                method: 'POST', // Change to POST
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded', // Use the appropriate content type
+                    'X-CSRF-Token': csrfToken, // Send CSRF token in the headers
+                },
+                body: new URLSearchParams({
+                    action: 'fetchProducts', // Include action in body
+                })
+            });
+
+            // Log the raw response text for debugging purposes
+            const text = await response.text();
+            //console.log('Response Text:', text); // Check if the response is valid JSON
+
+            // Check if the response is empty or invalid
+            if (text.trim() === '') {
+                throw new Error('Empty response from the server');
+            }
+
+            // Try to parse the JSON response manually
+            const data = JSON.parse(text); 
+
+            if (data.success) {
+                products = data.products;
+                loadProducts('all');
+            } else {
+                console.error('No products found');
+            }
+        } catch (error) {
+            console.error('Error fetching products:', error);
+        }
+    }
 
     // Load products into the product list
     function loadProducts(category) {
@@ -236,6 +287,7 @@ $(document).ready(function () {
         });
     }
 
+    fetchProducts();
     loadProducts('all');
 
     // Add to cart logic
@@ -244,8 +296,8 @@ $(document).ready(function () {
         let product = products.find(p => p.id === productId);
         let existingItem = cart.find(item => item.id === productId);
 
-        // Auto select discount based on product
-        $('#discount').val(product.discount);
+        // // Auto select discount based on product
+        // $('#discount').val(product.discount);
 
         if (existingItem) {
             existingItem.qty++;
@@ -260,7 +312,6 @@ $(document).ready(function () {
                 subtotal: product.price
             });
         }
-
         updateCart();
     });
 
@@ -309,6 +360,7 @@ $(document).ready(function () {
         $('#totalDiscount').text(`₱${totalDiscount.toFixed(2)}`);
         $('#totalBalance').text(`₱${totalAfterDiscount.toFixed(2)}`);
         $('#totalChange').text(`₱${change.toFixed(2)}`);
+        
     }
 
     $('#pay-amount').on('input', function () {
@@ -459,50 +511,50 @@ $(document).ready(function () {
         return { content: receiptContent, invoiceNumber };
     }
 
-$(document).on('click', '#pay', function () {
-    updateTotal();
-    if (table.rows().count() <= 0) {
-        Swal.fire({
-            title: "Please add items to the cart first.",
-            icon: "warning",
-            draggable: true
-        });
-    } else {
-        let totalBalance = parseFloat($('#totalBalance').text().replace(/[^\d.]/g, ''));
-        let payAmount = parseFloat($('#pay-amount').val()) || 0;
-
-        if (payAmount < totalBalance) {
+    $(document).on('click', '#pay', function () {
+        updateTotal();
+        if (table.rows().count() <= 0) {
             Swal.fire({
-                title: "Insufficient funds. Please check your payment amount.",
-                icon: "error",
+                title: "Please add items to the cart first.",
+                icon: "warning",
                 draggable: true
             });
         } else {
-            Swal.fire({
-                title: "Payment successful!",
-                icon: "success",
-                draggable: true
-            }).then(() => {
-                // After clicking "OK" on the success message, generate the receipt content
-                let { content, invoiceNumber } = generateReceiptContent();
+            let totalBalance = parseFloat($('#totalBalance').text().replace(/[^\d.]/g, ''));
+            let payAmount = parseFloat($('#pay-amount').val()) || 0;
 
-                // Insert receipt content into the modal's preview area
-                $('#receipt-preview-content').html(content);
+            if (payAmount < totalBalance) {
+                Swal.fire({
+                    title: "Insufficient funds. Please check your payment amount.",
+                    icon: "error",
+                    draggable: true
+                });
+            } else {
+                Swal.fire({
+                    title: "Payment successful!",
+                    icon: "success",
+                    draggable: true
+                }).then(() => {
+                    // After clicking "OK" on the success message, generate the receipt content
+                    let { content, invoiceNumber } = generateReceiptContent();
 
-                // Show the print confirmation modal
-                $('#confirm-print-modal').modal('show');
+                    // Insert receipt content into the modal's preview area
+                    $('#receipt-preview-content').html(content);
 
-                // Reset and prepare for the next transaction if needed
-                // $('#pay-amount').val("");
-                // $('#customer-name').val("");
-                // $('#discount').prop('selectedIndex', 0);
-                // $('#payment-method').prop('selectedIndex', 0);
-                // table.clear().draw();
-                updateTotal();
-            });
+                    // Show the print confirmation modal
+                    $('#confirm-print-modal').modal('show');
+
+                    // Reset and prepare for the next transaction if needed
+                    // $('#pay-amount').val("");
+                    // $('#customer-name').val("");
+                    // $('#discount').prop('selectedIndex', 0);
+                    // $('#payment-method').prop('selectedIndex', 0);
+                    // table.clear().draw();
+                    updateTotal();
+                });
+            }
         }
-    }
-});
+    });
 
     $('#confirm-print').click(function() {
     let printWindow = window.open('', '', 'width=300,height=600');
@@ -553,3 +605,16 @@ $(document).on('click', '#pay', function () {
 });
 
 </script>
+<?php } else { ?>
+<div class="d-flex justify-content-center align-items-center vh-100">
+  <div class="container">
+    <div class="row">
+      <div class="col text-center">
+        <iconify-icon icon="maki:caution" width="50" height="50"></iconify-icon>
+        <h2 class="fw-bolder">User does not have permission!</h2>
+        <p>We are sorry, your account does not have permission to access this page.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<?php } ?>

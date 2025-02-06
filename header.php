@@ -93,6 +93,7 @@ $route = $_GET['route'] ?? 'home';
               </a>
             </li>
             <?php } ?>
+            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_pos')){?>
             <li>
               <span class="sidebar-divider lg"></span>
             </li>
@@ -100,15 +101,16 @@ $route = $_GET['route'] ?? 'home';
               <iconify-icon icon="solar:menu-dots-linear" class="nav-small-cap-icon fs-4"></iconify-icon>
               <span class="hide-menu text-uppercase">pos management</span>
             </li>
-            <div class="collapse show" id="collapseSale">
+            <div class="collapse <?php echo ($route == 'pos' )? 'show' : ''; ?>" " id="collapseSale">
             <li class="sidebar-item">
-              <a class="sidebar-link active" href="index.php?route=pos" aria-expanded="false">
+              <a class="sidebar-link <?php echo ($route == 'pos' )? 'active' : ''; ?>" " href="index.php?route=pos" aria-expanded="false">
                 <iconify-icon icon="mdi:network-pos"></iconify-icon>
                 <span class="hide-menu">POS</span>
               </a>
             </li>
             </div>
-            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_product') || userHasPermission($pdo, $_SESSION["user_id"], 'manage_category') || userHasPermission($pdo, $_SESSION["user_id"], 'manage_brand') || userHasPermission($pdo, $_SESSION["user_id"], 'manage_units')||userHasPermission($pdo, $_SESSION["user_id"], 'manage_tax')){?>
+            <?php } ?>
+            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_product') || userHasPermission($pdo, $_SESSION["user_id"], 'manage_category') || userHasPermission($pdo, $_SESSION["user_id"], 'manage_unit')||userHasPermission($pdo, $_SESSION["user_id"], 'manage_discount')){?>
             <li>
               <span class="sidebar-divider lg"></span>
             </li>
@@ -116,33 +118,32 @@ $route = $_GET['route'] ?? 'home';
               <iconify-icon icon="solar:menu-dots-linear" class="nav-small-cap-icon fs-4"></iconify-icon>
               <span class="hide-menu text-uppercase">product management</span>
             </li>
-            
-            <div class="collapse <?php echo ($route == 'product-management'|| $route == 'view-product' || $route == 'category-management' || $route == 'brand-management' || $route == 'unit-management' || $route == 'tax-management') ? 'show' : ''; ?>" id="collapseProduct">
+            <div class="collapse <?php echo ($route == 'product-management'|| $route == 'ingredient' || $route == 'category' || $route == 'unit-management' || $route == 'discount') ? 'show' : ''; ?>" id="collapseProduct">
             <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_product')){?>
             <li class="sidebar-item">
               <a class="sidebar-link <?php echo ($route == 'view-product' )? 'active' : ''; ?>" href="index.php?route=product-management" aria-expanded="false">
-                <iconify-icon icon="mdi:cart"></iconify-icon>
+                <iconify-icon icon="mdi:food-turkey"></iconify-icon>
                 <span class="hide-menu">Products</span>
+              </a>
+            </li>
+            <?php } ?>
+            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_ingredient')){?>
+            <li class="sidebar-item">
+              <a class="sidebar-link" href="index.php?route=ingredient" aria-expanded="false">
+                <iconify-icon icon="fluent:bowl-salad-20-filled"></iconify-icon>
+                <span class="hide-menu">Ingredients</span>
               </a>
             </li>
             <?php } ?>
             <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_category')){?>
             <li class="sidebar-item">
-              <a class="sidebar-link" href="index.php?route=category-management" aria-expanded="false">
+              <a class="sidebar-link" href="index.php?route=category" aria-expanded="false">
                 <iconify-icon icon="material-symbols:category"></iconify-icon>
-                <span class="hide-menu">Category</span>
+                <span class="hide-menu">Categories</span>
               </a>
             </li>
             <?php } ?>
-            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_brand')){?>
-            <li class="sidebar-item">
-              <a class="sidebar-link" href="index.php?route=brand-management" aria-expanded="false">
-                <iconify-icon icon="mdi:tags"></iconify-icon>
-                <span class="hide-menu">Brand</span>
-              </a>
-            </li>
-            <?php } ?>
-            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_units')){?>
+            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_unit')){?>
             <li class="sidebar-item">
               <a class="sidebar-link" href="index.php?route=unit-management" aria-expanded="false">
                 <iconify-icon icon="mdi:scale"></iconify-icon>
@@ -150,123 +151,14 @@ $route = $_GET['route'] ?? 'home';
               </a>
             </li>
             <?php } ?>
-            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_tax')){?>
+            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_discount')){?>
             <li class="sidebar-item">
-              <a class="sidebar-link" href="index.php?route=tax-management" aria-expanded="false">
-                <iconify-icon icon="tabler:receipt-tax"></iconify-icon>
-                <span class="hide-menu">Tax</span>
+              <a class="sidebar-link" href="index.php?route=discount" aria-expanded="false">
+                <iconify-icon icon="hugeicons:discount"></iconify-icon>
+                <span class="hide-menu">Discounts</span>
               </a>
             </li>
             <?php } ?>
-            </div>
-            <?php } ?>
-            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_costing')){?>
-            <li>
-              <span class="sidebar-divider lg"></span>
-            </li>
-            <li class="nav-small-cap" data-bs-toggle="collapse" data-bs-target="#collapseStock" aria-expanded="false" aria-controls="collapseStock">
-              <iconify-icon icon="solar:menu-dots-linear" class="nav-small-cap-icon fs-4"></iconify-icon>
-              <span class="hide-menu text-uppercase">cost management</span>
-            </li>
-            <div class="collapse <?php echo ($route == 'costing') ? 'show' : ''; ?>" id="collapseStock">
-            <li class="sidebar-item">
-              <a class="sidebar-link" href="index.php?route=costing" aria-expanded="false">
-                <iconify-icon icon="fluent:money-calculator-24-regular"></iconify-icon>
-                <span class="hide-menu">Costing</span>
-              </a>
-            </li>
-            </div>
-            <?php } ?>
-            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_user') || userHasPermission($pdo, $_SESSION["user_id"], 'manage_role')){?>
-            <li>
-              <span class="sidebar-divider lg"></span>
-            </li>
-            <li class="nav-small-cap" data-bs-toggle="collapse" data-bs-target="#collapseVendor" aria-expanded="" aria-controls="collapseVendor">
-              <iconify-icon icon="solar:menu-dots-linear" class="nav-small-cap-icon fs-4"></iconify-icon>
-              <span class="hide-menu text-uppercase">Vendor Management</span>
-            </li>
-            <div class="collapse <?php echo ($route == 'manage-supplier'|| $route == 'manage-customer'|| $route == 'manage-transaction') ? 'show' : ''; ?>" id="collapseVendor">
-            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_supplier')){?>
-              <li class="sidebar-item">
-                <a class="sidebar-link <?php echo ($route == 'manage-supplier' )? 'active' : ''; ?>" href="index.php?route=manage-supplier" aria-expanded="false">
-                  <iconify-icon icon="carbon:scis-transparent-supply"></iconify-icon>
-                  <span class="hide-menu">Supplier</span>
-                </a>
-              </li>
-            <?php } ?>
-            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_customer')){?>
-              <li class="sidebar-item">
-                <a class="sidebar-link <?php echo ($route == 'manage-customer' )? 'active' : ''; ?>" href="index.php?route=manage-customer" aria-expanded="false">
-                  <iconify-icon icon="carbon:scis-transparent-supply"></iconify-icon>
-                  <span class="hide-menu">Customer</span>
-                </a>
-              </li>
-            <?php } ?>
-            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_transaction')){?>
-              <li class="sidebar-item">
-                <a class="sidebar-link <?php echo ($route == 'manage-transaction' )? 'active' : ''; ?>" href="index.php?route=manage-transaction" aria-expanded="false">
-                  <iconify-icon icon="ic:baseline-receipt-long"></iconify-icon>
-                  <span class="hide-menu">Transaction</span>
-                </a>
-              </li>
-            <?php } ?>
-            </div>
-            <?php } ?>
-            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_summary_report') || userHasPermission($pdo, $_SESSION["user_id"], 'manage_inventory_stock') || userHasPermission($pdo, $_SESSION["user_id"], 'manage_stock_valuation') || userHasPermission($pdo, $_SESSION["user_id"], 'manage_stock_movement') || userHasPermission($pdo, $_SESSION["user_id"], 'manage_product_history')){?>
-            <li>
-              <span class="sidebar-divider lg"></span>
-            </li>
-            <li class="nav-small-cap" data-bs-toggle="collapse" data-bs-target="#collapseReport" aria-expanded="<?php echo ($route == 'product-management') ? 'true' : 'false'; ?>" aria-controls="collapseUser">
-              <iconify-icon icon="solar:menu-dots-linear" class="nav-small-cap-icon fs-4"></iconify-icon>
-              <span class="hide-menu text-uppercase">Reports</span>
-            </li>
-            <div class="collapse <?php echo ($route == 'summary-report'|| $route == 'inventory-stock-report'|| $route == 'stock-valuation-report' || $route == 'stock-movement-report' || $route == 'product-history-report') ? 'show' : ''; ?>" id="collapseReport">
-            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_summary_report')){?>
-              <li class="sidebar-item">
-                <a class="sidebar-link <?php echo ($route == 'summary-report' )? 'active' : ''; ?>" href="index.php?route=summary-report" aria-expanded="false">
-                  <iconify-icon icon="carbon:scis-transparent-supply"></iconify-icon>
-                  <span class="hide-menu">Summary Report</span>
-                </a>
-              </li>
-            <?php } ?>
-            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_inventory_stock')){?>
-              <li class="sidebar-item">
-                <a class="sidebar-link <?php echo ($route == 'inventory-stock-report' )? 'active' : ''; ?>" href="index.php?route=inventory-stock-report" aria-expanded="false">
-                  <iconify-icon icon="ic:baseline-receipt-long"></iconify-icon>
-                  <span class="hide-menu">Inventory Stock Report</span>
-                </a>
-              </li>
-            <?php } ?>
-            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_stock_valuation')){?>
-              <li class="sidebar-item">
-                <a class="sidebar-link <?php echo ($route == 'stock-valuation-report' )? 'active' : ''; ?>" href="index.php?route=stock-valuation-report" aria-expanded="false">
-                  <iconify-icon icon="carbon:scis-transparent-supply"></iconify-icon>
-                  <span class="hide-menu">Stock Valuation Report</span>
-                </a>
-              </li>
-            <?php } ?>
-            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_stock_movement')){?>
-              <li class="sidebar-item">
-                <a class="sidebar-link <?php echo ($route == 'stock-movement-report' )? 'active' : ''; ?>" href="index.php?route=stock-movement-report" aria-expanded="false">
-                  <iconify-icon icon="carbon:scis-transparent-supply"></iconify-icon>
-                  <span class="hide-menu">Stock Movement Report</span>
-                </a>
-              </li>
-            <?php } ?>
-            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_product_history')){?>
-            <li class="sidebar-item">
-              <a class="sidebar-link <?php echo ($route == 'product-history-report' )? 'active' : ''; ?>" href="index.php?route=product-history-report" aria-expanded="false">
-                <iconify-icon icon="carbon:scis-transparent-supply"></iconify-icon>
-                <span class="hide-menu">Product History Report</span>
-              </a>
-            </li>
-            <?php } ?>
-            <li class="sidebar-item">
-              <a class="sidebar-link <?php echo ($route == 'supplier-transaction' )? 'active' : ''; ?>" href="index.php?route=supplier-transaction" aria-expanded="false">
-                <iconify-icon icon="carbon:scis-transparent-supply"></iconify-icon>
-                <span class="hide-menu">Supplier Report</span>
-              </a>
-            </li>
             </div>
             <?php } ?>
             <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_user') || userHasPermission($pdo, $_SESSION["user_id"], 'manage_role')){?>

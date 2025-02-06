@@ -1,5 +1,5 @@
 <?php
-  require 'session_checker.php';
+  require 'session_checker.php'; // Assuming this file initializes the session and checks user state
 ?>
 <!doctype html>
 <html lang="en">
@@ -43,10 +43,9 @@
                     <div class="form-check">
                       <input class="form-check-input primary" type="checkbox" value="" id="flexCheckChecked" checked>
                       <label class="form-check-label text-dark" for="flexCheckChecked">
-                        Remeber this Device
+                        Remember this Device
                       </label>
                     </div>
-                    <!-- <a class="text-primary fw-bold" href="./index.html">Forgot Password ?</a> -->
                   </div>
                   <button type="button" class="btn btn-primary w-100 py-8 fs-4 mb-4 rounded-2" id="submit_login">Sign In</button>
                 </form>
@@ -57,28 +56,12 @@
       </div>
     </div>
   </div>
+
   <script>
     $(document).ready(function(){
-//       toastr.options = {
-//     "closeButton": true,
-//     "debug": false,
-//     "newestOnTop": true,
-//     "progressBar": true,
-//     "positionClass": "toast-top-right",
-//     "preventDuplicates": true,
-//     "onclick": null,
-//     "showDuration": "300",
-//     "hideDuration": "1000",
-//     "timeOut": "2000",
-//     "extendedTimeOut": "1000",
-//     "showEasing": "swing",
-//     "hideEasing": "linear",
-//     "showMethod": "fadeIn",
-//     "hideMethod": "fadeOut"
-// }
-
+      // Handle form submission
       $('#userPassword').keypress(function (event) {
-          if (event.keyCode === 13) { // Check if Enter key is pressed
+          if (event.keyCode === 13) { // Enter key
               event.preventDefault(); // Prevent form submission
               loginForm();
           }
@@ -88,27 +71,28 @@
       });
 
       function loginForm(){
-        var formData = $('#login_form').serialize();
-          $.ajax({
-              url: "process/admin_action.php",
-              method: "POST",
-              data: formData+"&action=loginProcess",
-              dataType: "json",
-              success: function(response) {
-                  if(response.success==true){
-                      toastr.success(response.message);
-                      setTimeout(function() {
-                          window.location.href = response.redirectUrl;
-                      }, 2000);
-                      
-                  }else{
-                      toastr.error(response.message);
-                  }
-              }
-          });
+        var formData = $('#login_form').serialize(); // Include csrf_token in the serialized data
+        $.ajax({
+            url: "process/admin_action.php",
+            method: "POST",
+            data: formData + "&action=login", // Append action to the form data
+            dataType: "json",
+            success: function(response) {
+                if(response.success == true) {
+                    toastr.success(response.message);
+                    setTimeout(function() {
+                        window.location.href = response.redirectUrl;
+                    }, 2000);
+                } else {
+                    toastr.error(response.message);
+                }
+            },
+            error: function() {
+                toastr.error("An error occurred, please try again.");
+            }
+        });
       }
     });
   </script>
 </body>
-
 </html>
