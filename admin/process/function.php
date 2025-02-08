@@ -22,7 +22,51 @@ function userHasPermission($pdo, $userId, $permissionName) {
         return false; // Return false in case of an error (no permission granted)
     }
 }
+function getModules($pdo){
+    try {
+        $query = "SELECT * FROM modules";
+        $stmt = $pdo->prepare($query);
 
+        $stmt ->execute();
+        $modules = $stmt -> fetchAll(PDO::FETCH_ASSOC);
+        return $modules;
+    }catch(PDOException $e){
+                // Handle database connection error
+        echo "Error: " . $e->getMessage();
+        return array(); // Return an empty array if an error occurs
+    }
+}
+function getModulePermissions($pdo , $moduleID){
+    try {
+        $query = "SELECT * FROM permissions WHERE module_id = :module_id";
+        $stmt = $pdo->prepare($query);
+        $stmt->execute(['module_id' => $moduleID]);
+        $permissions = $stmt -> fetchAll(PDO::FETCH_ASSOC);
+        return $permissions;
+    }catch(PDOException $e){
+                // Handle database connection error
+        echo "Error: " . $e->getMessage();
+        return array(); // Return an empty array if an error occurs
+    }
+}
+function getRolePermissions($pdo) {
+    $roleId = $_POST['role_id'];
+    try {
+        // Fetch the permissions associated with the role
+        $stmt = $pdo->prepare("SELECT permission_id FROM role_permissions WHERE role_id = :role_id");
+        $stmt->execute(['role_id' => $roleId]);
+        $permissions = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        // Fetch the role name (assuming you want to display it as well)
+        $stmt = $pdo->prepare("SELECT role_name FROM roles WHERE id = :role_id");
+        $stmt->execute(['role_id' => $roleId]);
+        $roleName = $stmt->fetchColumn();
+
+        return array('success' => true, 'role_name' => $roleName, 'permissions' => $permissions);
+    } catch (Exception $e) {
+        return array('success' => false, 'message' => 'Failed to fetch role permissions: ' . $e->getMessage());
+    }
+}
 function getProducts($pdo) {
     try {
         // Join the 'products' table with the 'category' table, using 'AS' to alias column names
@@ -91,7 +135,20 @@ function getPaymentTypes($pdo) {
     $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+function getRole($pdo){
+    try {
+        $query = "SELECT * FROM roles";
+        $stmt = $pdo->prepare($query);
 
+        $stmt ->execute();
+        $roles = $stmt -> fetchAll(PDO::FETCH_ASSOC);
+        return $roles;
+    }catch(PDOException $e){
+                // Handle database connection error
+        echo "Error: " . $e->getMessage();
+        return array(); // Return an empty array if an error occurs
+    }
+}
 function loginProcess($pdo) {
     $username = $_POST['username'];
     $password = $_POST['password'];
@@ -118,6 +175,7 @@ function loginProcess($pdo) {
         // session_start();
         $_SESSION["user_id"] = $user["id"];
         $_SESSION["username"] = $user["username"];
+        $_SESSION["display_name"] = $user["display_name"];
         return array(
             'success' => true,
             'message' => 'Login successful.',
@@ -306,11 +364,49 @@ function deleteProduct($pdo) {
 // PRODUCT END
 
 // INGREDIENT START
+// View Batches
+function viewBatches($pdo) {
+    try {
+        $ingredient_id = intval($_POST['ingredient_id'] ?? 0);
+
+        // Validation: Ensure ingredient ID is provided
+        if (empty($ingredient_id)) {
+            return ['success' => false, 'message' => 'Ingredient ID is required'];
+        }
+
+        // Fetch batches for the given ingredient ID
+        $stmt = $pdo->prepare("SELECT * FROM ingredient_batch WHERE ingredient_id = :ingredient_id");
+        $stmt->bindParam(':ingredient_id', $ingredient_id);
+        $stmt->execute();
+
+        // Fetch all batches
+        $batches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Modify barcode value to "None" if empty
+        foreach ($batches as &$batch) {
+            if (empty($batch['barcode'])) {
+                $batch['barcode'] = 'No Barcode';
+            }
+        }
+
+        if ($batches) {
+            return ['success' => true, 'data' => $batches];
+        } else {
+            return ['success' => false, 'message' => 'No items found for this ingredient'];
+        }
+    } catch (PDOException $e) {
+        error_log("Error: " . $e->getMessage());
+        return ['success' => false, 'message' => 'Database error occurred'];
+    }
+}
+
+
+
 function addIngredient($pdo) {
     try {
+        // Get input values
         $ingredient_name = trim($_POST['ingredient_name'] ?? '');
         $price_per_unit = trim($_POST['price_per_unit'] ?? '');
-        $ingredient_qty = intval($_POST['ingredient_qty'] ?? 0);
         $warn_qty = intval($_POST['warn_qty'] ?? 0);
         $unit_id = intval($_POST['unit_type'] ?? 0);
 
@@ -321,8 +417,8 @@ function addIngredient($pdo) {
         if (empty($price_per_unit)) {
             return ['success' => false, 'message' => 'Price per unit is required'];
         }
-        if ($ingredient_qty === 0) {
-            return ['success' => false, 'message' => 'Quantity is required and cannot be zero'];
+        if ($warn_qty < 0) {  // Warn quantity cannot be negative
+            return ['success' => false, 'message' => 'Warning quantity cannot be negative'];
         }
         if (empty($unit_id)) {
             return ['success' => false, 'message' => 'Unit is required'];
@@ -332,17 +428,16 @@ function addIngredient($pdo) {
         $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM ingredient WHERE ingredient_name = :ingredient_name");
         $stmt_check->bindParam(':ingredient_name', $ingredient_name);
         $stmt_check->execute();
-        
+
         if ($stmt_check->fetchColumn() > 0) {
             return ['success' => false, 'message' => 'Ingredient already exists'];
         }
 
         // Insert new ingredient
-        $stmt = $pdo->prepare("INSERT INTO ingredient (ingredient_name, price_per_unit, ingredient_qty, warn_qty, unit_id) 
-                               VALUES (:ingredient_name, :price_per_unit, :ingredient_qty, :warn_qty, :unit_id)");
+        $stmt = $pdo->prepare("INSERT INTO ingredient (ingredient_name, price_per_unit, warn_qty, unit_id) 
+                               VALUES (:ingredient_name, :price_per_unit, :warn_qty, :unit_id)");
         $stmt->bindParam(':ingredient_name', $ingredient_name);
         $stmt->bindParam(':price_per_unit', $price_per_unit);
-        $stmt->bindParam(':ingredient_qty', $ingredient_qty);
         $stmt->bindParam(':warn_qty', $warn_qty);
         $stmt->bindParam(':unit_id', $unit_id);
 
@@ -357,12 +452,12 @@ function addIngredient($pdo) {
     }
 }
 
+// Update Ingredient
 function updateIngredient($pdo) {
     try {
         $ingredient_id = intval($_POST['update_id'] ?? 0);
         $ingredient_name = trim($_POST['ingredient_name'] ?? '');
         $price_per_unit = trim($_POST['price_per_unit'] ?? '');
-        $ingredient_qty = intval($_POST['ingredient_qty'] ?? 0);
         $warn_qty = intval($_POST['warn_qty'] ?? 0);
         $unit_id = intval($_POST['unit_type'] ?? 0);
 
@@ -376,8 +471,8 @@ function updateIngredient($pdo) {
         if (empty($price_per_unit)) {
             return ['success' => false, 'message' => 'Price per unit is required'];
         }
-        if ($ingredient_qty === 0) {
-            return ['success' => false, 'message' => 'Quantity is required and cannot be zero'];
+        if ($warn_qty < 0) {  // Warn quantity cannot be negative
+            return ['success' => false, 'message' => 'Warning quantity cannot be negative'];
         }
         if (empty($unit_id)) {
             return ['success' => false, 'message' => 'Unit is required'];
@@ -387,19 +482,18 @@ function updateIngredient($pdo) {
         $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM ingredient WHERE ingredient_id = :ingredient_id");
         $stmt_check->bindParam(':ingredient_id', $ingredient_id);
         $stmt_check->execute();
-        
+
         if ($stmt_check->fetchColumn() == 0) {
             return ['success' => false, 'message' => 'Ingredient not found'];
         }
 
         // Update ingredient
         $stmt = $pdo->prepare("UPDATE ingredient 
-                               SET ingredient_name = :ingredient_name, price_per_unit = :price_per_unit, ingredient_qty = :ingredient_qty, 
+                               SET ingredient_name = :ingredient_name, price_per_unit = :price_per_unit, 
                                    warn_qty = :warn_qty, unit_id = :unit_id 
                                WHERE ingredient_id = :ingredient_id");
         $stmt->bindParam(':ingredient_name', $ingredient_name);
         $stmt->bindParam(':price_per_unit', $price_per_unit);
-        $stmt->bindParam(':ingredient_qty', $ingredient_qty);
         $stmt->bindParam(':warn_qty', $warn_qty);
         $stmt->bindParam(':unit_id', $unit_id);
         $stmt->bindParam(':ingredient_id', $ingredient_id);
@@ -417,7 +511,7 @@ function updateIngredient($pdo) {
 
 function deleteIngredient($pdo) {
     try {
-        $ingredient_id = intval($_POST['ingredient_id'] ?? 0);
+        $ingredient_id = intval($_POST['update_id'] ?? 0);
 
         // Validation: Check if ingredient ID is provided
         if (empty($ingredient_id)) {
@@ -428,17 +522,22 @@ function deleteIngredient($pdo) {
         $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM ingredient WHERE ingredient_id = :ingredient_id");
         $stmt_check->bindParam(':ingredient_id', $ingredient_id);
         $stmt_check->execute();
-        
+
         if ($stmt_check->fetchColumn() == 0) {
             return ['success' => false, 'message' => 'Ingredient not found'];
         }
 
-        // Delete ingredient
+        // Delete ingredient batches first (because the ingredient is related to batches)
+        $stmt_batch_delete = $pdo->prepare("DELETE FROM ingredient_batch WHERE ingredient_id = :ingredient_id");
+        $stmt_batch_delete->bindParam(':ingredient_id', $ingredient_id);
+        $stmt_batch_delete->execute();
+
+        // Now delete the ingredient itself
         $stmt = $pdo->prepare("DELETE FROM ingredient WHERE ingredient_id = :ingredient_id");
         $stmt->bindParam(':ingredient_id', $ingredient_id);
 
         if ($stmt->execute()) {
-            return ['success' => true, 'message' => 'Ingredient deleted successfully'];
+            return ['success' => true, 'message' => 'Ingredient and related batches deleted successfully'];
         } else {
             return ['success' => false, 'message' => 'Failed to delete ingredient'];
         }
@@ -447,6 +546,165 @@ function deleteIngredient($pdo) {
         return ['success' => false, 'message' => 'Database error occurred'];
     }
 }
+function addBatch($pdo) {
+    try {
+        // Check if the required quantity field (batch_qty) is present in the POST data
+        if (empty($_POST['batch_qty'])) {
+            return ['success' => false, 'message' => 'Batch quantity is required'];
+        }
+
+        // Optional data, use existing values or defaults
+        $ingredient_id = isset($_POST['ingredient_id']) ? $_POST['ingredient_id'] : null;
+        $batch_barcode = isset($_POST['batch_barcode']) ? $_POST['batch_barcode'] : null;
+        $expiry_date = isset($_POST['expiry_date']) && !empty($_POST['expiry_date']) ? $_POST['expiry_date'] : '0000-00-00'; // Default to '0000-00-00' if empty
+        $batch_qty = $_POST['batch_qty']; // This is required
+        $created_at = date('Y-m-d H:i:s'); // Current date-time for created_at
+        $updated_at = $created_at; // Same as created_at for now
+
+        // If ingredient_id is provided, validate that it exists
+        if ($ingredient_id) {
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM ingredient WHERE ingredient_id = :ingredient_id");
+            $stmt->bindParam(':ingredient_id', $ingredient_id, PDO::PARAM_INT);
+            $stmt->execute();
+            $ingredient_exists = $stmt->fetchColumn();
+
+            if (!$ingredient_exists) {
+                return ['success' => false, 'message' => 'Ingredient not found'];
+            }
+        }
+
+        // If batch barcode is provided, check if it already exists in the ingredient_batch table
+        if ($batch_barcode) {
+            // Check if a batch with the same barcode and ingredient_id exists
+            $stmt = $pdo->prepare("SELECT batch_id, quantity FROM ingredient_batch WHERE barcode = :barcode AND ingredient_id = :ingredient_id");
+            $stmt->bindParam(':barcode', $batch_barcode, PDO::PARAM_STR);
+            $stmt->bindParam(':ingredient_id', $ingredient_id, PDO::PARAM_INT);
+            $stmt->execute();
+            $existing_batch = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($existing_batch) {
+                // If the batch exists, update the quantity by adding the new quantity to the existing one
+                $new_qty = $existing_batch['quantity'] + $batch_qty;
+                $stmt = $pdo->prepare("UPDATE ingredient_batch SET quantity = :quantity, updated_at = :updated_at WHERE batch_id = :batch_id");
+                $stmt->bindParam(':quantity', $new_qty, PDO::PARAM_INT);
+                $stmt->bindParam(':updated_at', $updated_at, PDO::PARAM_STR);
+                $stmt->bindParam(':batch_id', $existing_batch['batch_id'], PDO::PARAM_INT);
+                $stmt->execute();
+                
+                return ['success' => true, 'message' => 'Batch quantity updated successfully'];
+            }
+        }
+
+        // Insert a new batch if no existing batch with the barcode is found
+        $sql = "INSERT INTO ingredient_batch (ingredient_id, barcode, quantity, expiry_date, created_at, updated_at)
+                VALUES (:ingredient_id, :barcode, :quantity, :expiry_date, :created_at, :updated_at)";
+        
+        $stmt = $pdo->prepare($sql);
+
+        // Bind parameters, only bind non-null values
+        $stmt->bindParam(':quantity', $batch_qty, PDO::PARAM_INT);
+        $stmt->bindParam(':created_at', $created_at, PDO::PARAM_STR);
+        $stmt->bindParam(':updated_at', $updated_at, PDO::PARAM_STR);
+
+        if ($ingredient_id) {
+            $stmt->bindParam(':ingredient_id', $ingredient_id, PDO::PARAM_INT);
+        } else {
+            $stmt->bindValue(':ingredient_id', null, PDO::PARAM_NULL);
+        }
+
+        if ($batch_barcode) {
+            $stmt->bindParam(':barcode', $batch_barcode, PDO::PARAM_STR);
+        } else {
+            $stmt->bindValue(':barcode', null, PDO::PARAM_NULL);
+        }
+
+        // Bind the expiry date (which is either the provided date or the default '0000-00-00')
+        $stmt->bindParam(':expiry_date', $expiry_date, PDO::PARAM_STR);
+
+        // Execute the query
+        $stmt->execute();
+
+        // Return success message
+        return ['success' => true, 'message' => 'Batch added successfully'];
+    } catch (Exception $e) {
+        return ['success' => false, 'message' => 'Error adding batch: ' . $e->getMessage()];
+    }
+}
+
+
+function moveToWaste($pdo) {
+    try {
+        // Get the batch ID, waste quantity, and reason from the POST data
+        $batch_id = intval($_POST['batch_id'] ?? 0);
+        $waste_qty = floatval($_POST['waste_qty'] ?? 0);
+        $waste_reason = trim($_POST['waste_reason'] ?? '');
+
+        // Ensure the session is started to access the display_name
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        // Get the display name from the session
+        $reported_by = $_SESSION['display_name'] ?? 'Unknown';  // Default to 'Unknown' if not set
+
+        // Validation: Ensure all required fields are provided
+        if (empty($batch_id) || $waste_qty <= 0 || empty($waste_reason)) {
+            return ['success' => false, 'message' => 'All fields (batch ID, waste quantity, and reason) are required'];
+        }
+
+        // Fetch the batch details from the ingredient_batch table
+        $stmt = $pdo->prepare("SELECT * FROM ingredient_batch WHERE batch_id = :batch_id");
+        $stmt->bindParam(':batch_id', $batch_id);
+        $stmt->execute();
+        $batch = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$batch) {
+            return ['success' => false, 'message' => 'Batch not found'];
+        }
+
+        // Check if the waste quantity is less than or equal to the available quantity
+        if ($batch['quantity'] < $waste_qty) {
+            return ['success' => false, 'message' => 'Not enough quantity to waste'];
+        }
+
+        // Update the batch quantity after subtracting the waste quantity
+        $new_quantity = $batch['quantity'] - $waste_qty;
+
+        // Update the ingredient_batch table with the new quantity
+        $update_stmt = $pdo->prepare("UPDATE ingredient_batch SET quantity = :quantity, updated_at = NOW() WHERE batch_id = :batch_id");
+        $update_stmt->execute([
+            'quantity' => $new_quantity,
+            'batch_id' => $batch_id
+        ]);
+
+        // If all the quantity is wasted, delete the batch from ingredient_batch
+        if ($new_quantity == 0) {
+            $delete_stmt = $pdo->prepare("DELETE FROM ingredient_batch WHERE batch_id = :batch_id");
+            $delete_stmt->execute(['batch_id' => $batch_id]);
+        }
+
+        // Insert a record into the ingredient_waste table, including the reported_by (display_name)
+        $insert_stmt = $pdo->prepare("INSERT INTO ingredient_waste (ingredient_name, ingredient_price, quantity_wasted, units, reason, reported_by, created_at, updated_at) 
+                                      SELECT i.ingredient_name, i.price_per_unit, :waste_qty, i.unit_id, :waste_reason, :reported_by, NOW(), NOW() 
+                                      FROM ingredient_batch ib 
+                                      JOIN ingredient i ON ib.ingredient_id = i.ingredient_id 
+                                      WHERE ib.batch_id = :batch_id");
+        $insert_stmt->execute([
+            'waste_qty' => $waste_qty,
+            'waste_reason' => $waste_reason,
+            'reported_by' => $reported_by,
+            'batch_id' => $batch_id
+        ]);
+
+        // Return success message
+        return ['success' => true, 'message' => 'Successfully moved to waste'];
+    } catch (PDOException $e) {
+        // Handle any database errors
+        error_log("Error: " . $e->getMessage());
+        return ['success' => false, 'message' => 'Database error occurred'];
+    }
+}
+
 
 // INGREDIENT END
 
@@ -769,4 +1027,303 @@ function deleteDiscount($pdo) {
 }
 
 //DISCOUNT END
+
+//USER START
+function addUser($pdo) {
+    try {
+        // Validate user display name
+        if (empty($_POST['user_display'])) {
+            return ['success' => false, 'message' => 'Display name is required.'];
+        }
+        $user_display = $_POST['user_display'];
+
+        // Validate username
+        if (empty($_POST['username'])) {
+            return ['success' => false, 'message' => 'Username is required.'];
+        }
+        $username = $_POST['username'];
+
+        // Default password (can be updated later)
+        $password = 'takoadmin';  
+
+        // Validate password length
+        if (strlen($password) < 6) {  // Minimum password length validation
+            return ['success' => false, 'message' => 'Password must be at least 6 characters long.'];
+        }
+
+        // Validate user role
+        if (empty($_POST['user_role']) || !is_numeric($_POST['user_role'])) {
+            return ['success' => false, 'message' => 'A valid user role is required.'];
+        }
+        $user_role = $_POST['user_role'];
+
+        // Validate login enabled checkbox
+        $loginEnabled = isset($_POST['loginEnabled']) && $_POST['loginEnabled'] == 'on' ? '1' : '0';
+
+        // Check if Users with the same name already exist
+        $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = :username OR display_name = :display_name");
+        
+        // Use variables for binding
+        $stmt_check->bindParam(':username', $username);
+        $stmt_check->bindParam(':display_name', $user_display);
+        $stmt_check->execute();
+        $count = $stmt_check->fetchColumn();
+
+        if ($count > 0) {
+            return ['success' => false, 'message' => 'Username or display name already exists.'];
+        }
+
+        // Hash password before binding
+        $hashed_password = password_hash($password, PASSWORD_BCRYPT);
+
+        // Insert the new user into the database
+        $stmt = $pdo->prepare("INSERT INTO users (username, password, display_name, role_id, isEnabled) VALUES (:username, :password, :display_name, :role_id , :isEnabled)");
+
+        // Use variables for binding
+        $stmt->bindParam(':username', $username);
+        $stmt->bindParam(':password', $hashed_password);  // Pass the hashed password
+        $stmt->bindParam(':display_name', $user_display);
+        $stmt->bindParam(':role_id', $user_role, PDO::PARAM_INT);
+        $stmt->bindParam(':isEnabled', $loginEnabled, PDO::PARAM_INT);
+
+        if ($stmt->execute()) {
+            return ['success' => true, 'message' => 'User added successfully.'];
+        } else {
+            return ['success' => false, 'message' => 'Error occurred while adding the user.'];
+        }
+    } catch(PDOException $e) {
+        return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
+    }
+}
+function updateUser($pdo) {
+    try {
+        // Validate update ID (must be numeric)
+        if (empty($_POST['update_id']) || !is_numeric($_POST['update_id'])) {
+            return ['success' => false, 'message' => 'Invalid user ID.'];
+        }
+        $update_ID = $_POST['update_id'];
+
+        // Validate user display name
+        if (empty($_POST['user_display'])) {
+            return ['success' => false, 'message' => 'Display name is required.'];
+        }
+        $user_display = $_POST['user_display'];
+
+        // Validate username
+        if (empty($_POST['username'])) {
+            return ['success' => false, 'message' => 'Username is required.'];
+        }
+        $username = $_POST['username'];
+
+        // Validate user role
+        if (empty($_POST['user_role']) || !is_numeric($_POST['user_role'])) {
+            return ['success' => false, 'message' => 'A valid user role is required.'];
+        }
+        $user_role = $_POST['user_role'];
+
+        // Validate login enabled checkbox
+        $loginEnabled = isset($_POST['loginEnabled']) && $_POST['loginEnabled'] == 'on' ? '1' : '0';
+
+        // Check if users with the same username or display name already exist (excluding the current user)
+        $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM users WHERE (username = :username OR display_name = :display_name) AND id != :id");
+        $stmt_check->bindParam(':username', $username);
+        $stmt_check->bindParam(':display_name', $user_display);
+        $stmt_check->bindParam(':id', $update_ID, PDO::PARAM_INT);
+        $stmt_check->execute();
+        $count = $stmt_check->fetchColumn();
+
+        if ($count > 0) {
+            return ['success' => false, 'message' => 'Username or display name already exists.'];
+        }
+
+        // Proceed to update the user details
+        $stmt = $pdo->prepare("UPDATE users SET username = :username, display_name = :display_name, role_id = :role_id, isEnabled = :isEnabled WHERE id = :id");
+        $stmt->bindParam(':username', $username);
+        $stmt->bindParam(':display_name', $user_display);
+        $stmt->bindParam(':role_id', $user_role, PDO::PARAM_INT);
+        $stmt->bindParam(':isEnabled', $loginEnabled, PDO::PARAM_INT);
+        $stmt->bindParam(':id', $update_ID, PDO::PARAM_INT);
+
+        if ($stmt->execute()) {
+            return ['success' => true, 'message' => 'User updated successfully.'];
+        } else {
+            return ['success' => false, 'message' => 'Error occurred while updating the user.'];
+        }
+    } catch(PDOException $e) {
+        return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
+    }
+}
+
+function updateUserPassword($pdo) {
+    try {
+        // Validate update ID (must be numeric)
+        if (empty($_POST['update_id']) || !is_numeric($_POST['update_id'])) {
+            return ['success' => false, 'message' => 'Invalid user ID.'];
+        }
+        $update_ID = $_POST['update_id'];
+
+        // Validate new password
+        if (empty($_POST['user_password']) || strlen($_POST['user_password']) < 6) {
+            return ['success' => false, 'message' => 'Password must be at least 6 characters long.'];
+        }
+        $newPassword = $_POST['user_password'];
+
+        // Validate confirm password
+        if (empty($_POST['user_conpass']) || $_POST['user_conpass'] !== $newPassword) {
+            return ['success' => false, 'message' => 'Passwords do not match.'];
+        }
+
+        // Hash the new password securely
+        $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
+
+        // Proceed to update the password in the database
+        $stmt = $pdo->prepare("UPDATE users SET password = :password WHERE id = :id");
+        $stmt->bindParam(':password', $hashedPassword);
+        $stmt->bindParam(':id', $update_ID, PDO::PARAM_INT);
+
+        if ($stmt->execute()) {
+            return ['success' => true, 'message' => 'Password updated successfully.'];
+        } else {
+            return ['success' => false, 'message' => 'Error occurred while updating the password.'];
+        }
+    } catch (PDOException $e) {
+        return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
+    }
+}
+
+function deleteUser($pdo) {
+    try {
+        // Validate update ID (must be numeric)
+        if (empty($_POST['update_id']) || !is_numeric($_POST['update_id'])) {
+            return ['success' => false, 'message' => 'Invalid user ID.'];
+        }
+        $update_ID = $_POST['update_id'];
+
+        // Check if the user exists
+        $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM users WHERE id = :id");
+        $stmt_check->bindParam(':id', $update_ID, PDO::PARAM_INT);
+        $stmt_check->execute();
+        $count = $stmt_check->fetchColumn();
+
+        if ($count == 0) {
+            return ['success' => false, 'message' => 'User not found.'];
+        }
+
+        // Proceed to delete the user
+        $stmt = $pdo->prepare("DELETE FROM users WHERE id = :id");
+        $stmt->bindParam(':id', $update_ID, PDO::PARAM_INT);
+
+        if ($stmt->execute()) {
+            return ['success' => true, 'message' => 'User has been deleted successfully.'];
+        } else {
+            return ['success' => false, 'message' => 'Error occurred while deleting the user.'];
+        }
+
+    } catch (PDOException $e) {
+        return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
+    }
+}
+
+//USER END
+
+//ROLE START
+function addRole($pdo){
+    $roleName = $_POST['role_name'];
+    $permissions = $_POST['selected_permission'];
+
+    try {
+        // Start a transaction
+        $pdo->beginTransaction();
+
+        // Insert the new role into the roles table (if you have one)
+        $stmt = $pdo->prepare("INSERT INTO roles (role_name) VALUES (:role_name)");
+        $stmt->execute(['role_name' => $roleName]);
+
+        // Get the ID of the newly inserted role
+        $roleId = $pdo->lastInsertId();
+
+        // Insert the permissions into the role_permissions table
+        $stmt = $pdo->prepare("INSERT INTO role_permissions (role_id, permission_id) VALUES (:role_id, :permission_id)");
+
+        foreach ($permissions as $permissionId) {
+            $stmt->execute(['role_id' => $roleId, 'permission_id' => $permissionId]);
+        }
+        // Commit the transaction
+        $pdo->commit();
+        return array('success' => true, 'message' => 'Role and permissions added successfully!');
+    } catch (Exception $e) {
+        // Roll back the transaction if something failed
+        $pdo->rollBack();
+        return array('success' => false, 'message' => 'Failed to add role and permissions' . $e->getMessage());
+    }
+}
+
+function updateRole($pdo) {
+    $roleId = $_POST['role_id'];
+    $roleName = $_POST['role_name'];
+    $permissions = $_POST['selected_permission'];
+
+    try {
+        // Start a transaction
+        $pdo->beginTransaction();
+
+        // Update the role name in the roles table
+        $stmt = $pdo->prepare("UPDATE roles SET role_name = :role_name WHERE id = :role_id");
+        $stmt->execute(['role_name' => $roleName, 'role_id' => $roleId]);
+
+        // Delete existing permissions for the role
+        $stmt = $pdo->prepare("DELETE FROM role_permissions WHERE role_id = :role_id");
+        $stmt->execute(['role_id' => $roleId]);
+
+        // Insert the updated permissions into the role_permissions table
+        $stmt = $pdo->prepare("INSERT INTO role_permissions (role_id, permission_id) VALUES (:role_id, :permission_id)");
+
+        foreach ($permissions as $permissionId) {
+            $stmt->execute(['role_id' => $roleId, 'permission_id' => $permissionId]);
+        }
+
+        // Commit the transaction
+        $pdo->commit();
+        return array('success' => true, 'message' => 'Role and permissions updated successfully!');
+    } catch (Exception $e) {
+        // Roll back the transaction if something failed
+        $pdo->rollBack();
+        return array('success' => false, 'message' => 'Failed to update role and permissions: ' . $e->getMessage());
+    }
+}
+function deleteRole($pdo) {
+    $roleId = $_POST['role_id'];
+
+    try {
+        // Check if the role is "admin" before deletion
+        $stmt = $pdo->prepare("SELECT role_name FROM roles WHERE id = :role_id");
+        $stmt->execute(['role_id' => $roleId]);
+        $role = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($role && strtolower($role['role_name']) == 'admin') {
+            return array('success' => false, 'message' => 'Cannot delete the "admin" role!');
+        }
+
+        // Start a transaction
+        $pdo->beginTransaction();
+
+        // Delete the role_permissions associated with this role
+        $stmt = $pdo->prepare("DELETE FROM role_permissions WHERE role_id = :role_id");
+        $stmt->execute(['role_id' => $roleId]);
+
+        // Delete the role from the roles table
+        $stmt = $pdo->prepare("DELETE FROM roles WHERE id = :role_id");
+        $stmt->execute(['role_id' => $roleId]);
+
+        // Commit the transaction
+        $pdo->commit();
+        return array('success' => true, 'message' => 'Role deleted successfully!');
+    } catch (Exception $e) {
+        // Roll back the transaction if something failed
+        $pdo->rollBack();
+        return array('success' => false, 'message' => 'Failed to delete role: ' . $e->getMessage());
+    }
+}
+//ROLE END
+
 ?>

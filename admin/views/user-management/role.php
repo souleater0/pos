@@ -1,11 +1,5 @@
 <?php 
 $modules = getModules($pdo);
-//$permissions = getModulePermissions($pdom ,$moduleId);
-// function getModulePermissions($permissions, $moduleId) {
-//   return array_filter($permissions, function($permission) use ($moduleId) {
-//       return $permission['module_id'] == $moduleId;
-//   });
-// }
 ?>
 <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_role')){?>
 <div class="body-wrapper-inner">
@@ -46,6 +40,7 @@ $modules = getModules($pdo);
             <label for="role_name" class="form-label">Role Name</label>
             <input type="text" class="form-control" id="role_name" name="role_name" placeholder="Ex. Admin">
           </div>
+          <input type="hidden" id="csrf_token" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
           <span class="text-black fw-bold">Assign Permissions to Role</span>
           <div class="col-lg-12">
           <table class="table">
@@ -64,7 +59,6 @@ $modules = getModules($pdo);
           <td>
             <div class="row permissions-container" data-module-id="<?= $module['id']; ?>">
               <?php
-              // Fetch permissions for the current module from your database
               $permissions = getModulePermissions($pdo, $module['id']);
               ?>
               <?php foreach ($permissions as $permission): ?>
@@ -93,6 +87,7 @@ $modules = getModules($pdo);
 </div>
 <!-- END -->
 <script>
+  
     // Function to update the "Check All" checkbox based on individual checkboxes
     function updateCheckAllGlobal() {
         var totalCheckboxes = $('input[type="checkbox"]').not('#checkall_global').length;
@@ -111,17 +106,27 @@ $modules = getModules($pdo);
         checkAllGlobal(this);
     });
 
-// Update the "Check All" checkbox when any individual checkbox changes
-$(document).on('change', 'input[type="checkbox"]', function () {
-    if ($(this).attr('id') !== 'checkall_global') {
-        updateCheckAllGlobal();
-    }
-});
+    // Update the "Check All" checkbox when any individual checkbox changes
+    $(document).on('change', 'input[type="checkbox"]', function () {
+        if ($(this).attr('id') !== 'checkall_global') {
+            updateCheckAllGlobal();
+        }
+    });
 
-
-    // Initial check to ensure "Check All" reflects the state of all checkboxes on page load
     $(document).ready(function () {
         updateCheckAllGlobal();
+        
+        $('#addRoleBTN').click(function () {
+            // Uncheck all checkboxes
+            $('input[type="checkbox"]').prop('checked', false);
+            
+            // Hide the "Update" button and show the "Add" button
+            $('#updateRole').hide();
+            $('#addRole').show();
+
+            // Clear the role name input field
+            $('#role_name').val('');
+        });
 
         // Add Role
         $('#addRole').click(function () {
@@ -132,6 +137,7 @@ $(document).on('change', 'input[type="checkbox"]', function () {
             $('.permission-checkbox:checked').each(function () {
                 selectedPermissions.push($(this).val());
             });
+            var csrfToken = $('#csrf_token').val();  // Get CSRF token
 
             // Ajax Request
             $.ajax({
@@ -140,6 +146,7 @@ $(document).on('change', 'input[type="checkbox"]', function () {
                 data: {
                     role_name: roleName,
                     selected_permission: selectedPermissions,
+                    csrf_token: csrfToken,  // Send CSRF token
                     action: "addRole"
                 },
                 dataType: "json",
@@ -147,47 +154,71 @@ $(document).on('change', 'input[type="checkbox"]', function () {
                     if (response.success) {
                         LoadTable();
                         $('#roleModal').modal('hide');
-                        toastr.success(response.message);
+                        Swal.fire({
+                            icon: 'success',
+                            title: response.message,
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
                     } else {
-                        toastr.error(response.message);
+                        Swal.fire({
+                            icon: 'error',
+                            title: response.message,
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
                     }
                 }
             });
         });
+
         $('#updateRole').click(function() {
-            var roleId = $(this).attr('update-id'); // Get the role ID from the button's attribute
+            var roleId = $(this).attr('update-id');
             var roleName = $('#role_name').val();
             var selectedPermissions = [];
-            
-            // Gather selected permissions
+            var csrfToken = $('#csrf_token').val();  // Get CSRF token
+
             $('.permission-checkbox:checked').each(function() {
                 selectedPermissions.push($(this).val());
             });
             
-            // Send AJAX request
             $.ajax({
-                url: "admin/process/admin_action.php", // URL to the server-side script
+                url: "admin/process/admin_action.php",
                 method: "POST",
                 data: {
                     role_id: roleId,
                     role_name: roleName,
                     selected_permission: selectedPermissions,
-                    action: "updateRole" // Action parameter to identify the request
+                    csrf_token: csrfToken,  // Send CSRF token
+                    action: "updateRole"
                 },
                 dataType: "json",
                 success: function(response) {
                     if (response.success) {
-                        // Handle success response
-                        LoadTable(); // Refresh the table
-                        $('#roleModal').modal('hide'); // Close the modal
-                        toastr.success(response.message); // Show success message
+                        LoadTable();
+                        $('#roleModal').modal('hide');
+                        Swal.fire({
+                            icon: 'success',
+                            title: response.message,
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
                     } else {
-                        // Handle error response
-                        toastr.error(response.message); // Show error message
+                        Swal.fire({
+                            icon: 'error',
+                            title: response.message,
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
                     }
                 },
                 error: function() {
-                    toastr.error('An error occurred while updating the role.'); // Handle AJAX error
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'An error occurred while updating the role.',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
                 }
             });
         });
@@ -212,30 +243,26 @@ $(document).on('change', 'input[type="checkbox"]', function () {
 
         // Function to reload DataTable
         function LoadTable() {
-            table.ajax.reload(null, false); // Reload the DataTable without resetting current page
+            table.ajax.reload(null, false);
         }
 
         // Handle module checkbox changes
         $('.module-checkbox').on('change', function () {
             var moduleId = $(this).data('module-id');
             var isChecked = $(this).is(':checked');
-            // Check/uncheck all permissions associated with the module
             $(`.permissions-container[data-module-id="${moduleId}"] .permission-checkbox`).prop('checked', isChecked);
         });
 
-        // Function to check/uncheck module checkboxes based on permissions
         function updateModuleCheckbox(moduleId) {
             var allPermissionsChecked = $(`.permissions-container[data-module-id="${moduleId}"] .permission-checkbox`).length === $(`.permissions-container[data-module-id="${moduleId}"] .permission-checkbox:checked`).length;
             $(`.module-checkbox[data-module-id="${moduleId}"]`).prop('checked', allPermissionsChecked);
         }
 
-        // Event handler for when any permission checkbox is changed
         $(document).on('change', '.permission-checkbox', function () {
             var moduleId = $(this).data('module-id');
             updateModuleCheckbox(moduleId);
         });
 
-        // Initial check to ensure modules reflect the state of permissions on page load
         $('.module-checkbox').each(function () {
             var moduleId = $(this).data('module-id');
             updateModuleCheckbox(moduleId);
@@ -249,38 +276,94 @@ $(document).on('change', 'input[type="checkbox"]', function () {
                 method: "POST",
                 data: {
                     role_id: data.id,
+                    csrf_token: $('#csrf_token').val(), // Send CSRF token
                     action: "getUserPermissionbyID"
                 },
                 dataType: "json",
                 success: function (response) {
                     if (response.success) {
-                        $('#role_name').val(response.role_name); // Set the role name
-                        // Uncheck all checkboxes first
+                        $('#role_name').val(response.role_name);
                         $('.permission-checkbox').prop('checked', false);
-                        // Check the checkboxes that match the role's permissions
                         response.permissions.forEach(function (permissionId) {
                             $('#permission' + permissionId).prop('checked', true);
                         });
-                        // Update the module checkboxes based on the selected permissions
                         $('.module-checkbox').each(function () {
                             var moduleId = $(this).data('module-id');
                             updateModuleCheckbox(moduleId);
                         });
-                        // Set the update-id attribute for the update button
                         $('#updateRole').attr('update-id', data.id);
-                        // Show the modal
-                        $("#role_name").val(data.role_name);
                         updateCheckAllGlobal();
                         $('#addRole').hide();
                         $('#updateRole').show();
                         $('#roleModal').modal('show');
                     } else {
-                        toastr.error(response.message);
+                        Swal.fire({
+                            icon: 'error',
+                            title: response.message,
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
                     }
                 }
             });
         });
-    });
+        $('#roleTable').on('click', 'button.btn-danger', function () {
+          var data = table.row($(this).parents('tr')).data();
+
+          // Show SweetAlert for confirmation
+          Swal.fire({
+              title: 'Are you sure?',
+              text: "You won't be able to revert this!",
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonColor: '#d33',
+              cancelButtonColor: '#3085d6',
+              confirmButtonText: 'Yes, delete it!'
+          }).then((result) => {
+              if (result.isConfirmed) {
+                  // If confirmed, proceed with the deletion
+                  $.ajax({
+                      url: "admin/process/admin_action.php",
+                      method: "POST",
+                      data: {
+                          role_id: data.id,
+                          csrf_token: $('#csrf_token').val(),
+                          action: "deleteRole"
+                      },
+                      dataType: "json",
+                      success: function (response) {
+                          if (response.success) {
+                              LoadTable();
+                              Swal.fire({
+                                  icon: 'success',
+                                  title: response.message,
+                                  showConfirmButton: false,
+                                  timer: 1500
+                              });
+                          } else {
+                              Swal.fire({
+                                  icon: 'error',
+                                  title: response.message,
+                                  showConfirmButton: false,
+                                  timer: 1500
+                              });
+                          }
+                      },
+                      error: function() {
+                          Swal.fire({
+                              icon: 'error',
+                              title: 'An error occurred while deleting the role.',
+                              showConfirmButton: false,
+                              timer: 1500
+                          });
+                      }
+                  });
+              }
+          });
+        });
+});
+
+
 </script>
 
 <?php }else{

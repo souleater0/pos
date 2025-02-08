@@ -21,9 +21,23 @@
                 JOIN category c ON p.category_id = c.category_id';
                 break;
             case 'ingredient':
-                $sql = 'SELECT ingredient.*, unit.unit_type
-                        FROM ingredient
-                        JOIN unit ON ingredient.unit_id = unit.unit_id';
+                $sql = 'SELECT 
+                            i.ingredient_id,
+                            i.ingredient_name,
+                            i.price_per_unit,
+                            i.warn_qty,
+                            i.unit_id,
+                            u.unit_type,
+                            COALESCE(SUM(b.quantity), 0) AS ingredient_qty,
+                            COALESCE(MIN(b.expiry_date), "0000-00-00") AS nearest_expiry
+                        FROM ingredient i
+                        LEFT JOIN ingredient_batch b ON i.ingredient_id = b.ingredient_id
+                        LEFT JOIN unit u ON i.unit_id = u.unit_id
+                        GROUP BY i.ingredient_id, i.ingredient_name, i.price_per_unit, i.warn_qty, u.unit_type
+                        ORDER BY 
+                            (COALESCE(MIN(b.expiry_date), "0000-00-00") = "0000-00-00") ASC,
+                            MIN(b.expiry_date) ASC;
+                        ';
                 break;
             case 'category':
                 $sql = 'SELECT * FROM category
@@ -36,6 +50,10 @@
             case 'discount':
                 $sql = 'SELECT * FROM discount
                         ORDER BY discount_percentage ASC';
+                break;
+            case 'ing_waste':
+                $sql = 'SELECT * FROM ingredient_waste
+                        ORDER BY waste_id DESC';
                 break;
             case 'users':
                 $sql = 'SELECT

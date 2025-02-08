@@ -7,6 +7,9 @@ switch ($route){
     case "pos":
         require 'admin/views/pos-management/pos.php';
         break;
+    case "receipt":
+        require 'admin/views/pos-management/receipt.php';
+        break;
     case "product-management":
         require 'admin/views/product-management/product.php';
         break;
@@ -21,6 +24,9 @@ switch ($route){
         break;
     case "discount":
         require 'admin/views/product-management/discount.php';
+        break;
+    case "ingredient-waste":
+        require 'admin/views/waste-management/ingredient_waste.php';
         break;
     case "user-management":
         require 'admin/views/user-management/users.php';

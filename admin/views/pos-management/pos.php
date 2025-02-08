@@ -233,40 +233,40 @@ $(document).ready(function () {
 
     // Fetch products from the server
     async function fetchProducts() {
-        try {
-            const response = await fetch('admin/process/admin_action.php', {
-                method: 'POST', // Change to POST
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded', // Use the appropriate content type
-                    'X-CSRF-Token': csrfToken, // Send CSRF token in the headers
-                },
-                body: new URLSearchParams({
-                    action: 'fetchProducts', // Include action in body
-                })
-            });
+    try {
+        const response = await fetch('admin/process/admin_action.php', {
+            method: 'POST', // Change to POST
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded', // Use the appropriate content type
+            },
+            body: new URLSearchParams({
+                action: 'fetchProducts', // Include action in body
+                csrf_token: csrfToken,  // Include CSRF token in the body
+            })
+        });
 
-            // Log the raw response text for debugging purposes
-            const text = await response.text();
-            //console.log('Response Text:', text); // Check if the response is valid JSON
+        // Log the raw response text for debugging purposes
+        const text = await response.text();
+        //console.log('Response Text:', text); // Check if the response is valid JSON
 
-            // Check if the response is empty or invalid
-            if (text.trim() === '') {
-                throw new Error('Empty response from the server');
-            }
-
-            // Try to parse the JSON response manually
-            const data = JSON.parse(text); 
-
-            if (data.success) {
-                products = data.products;
-                loadProducts('all');
-            } else {
-                console.error('No products found');
-            }
-        } catch (error) {
-            console.error('Error fetching products:', error);
+        // Check if the response is empty or invalid
+        if (text.trim() === '') {
+            throw new Error('Empty response from the server');
         }
+
+        // Try to parse the JSON response manually
+        const data = JSON.parse(text); 
+
+        if (data.success) {
+            products = data.products;
+            loadProducts('all');
+        } else {
+            console.error('No products found');
+        }
+    } catch (error) {
+        console.error('Error fetching products:', error);
     }
+}
 
     // Load products into the product list
     function loadProducts(category) {
@@ -427,6 +427,14 @@ $(document).ready(function () {
     // Category selection
     $('.category-btn').on('click', function () {
         let category = $(this).data('category');
+
+        // Remove active class from all buttons
+        $('.category-btn').removeClass('btn-success').addClass('btn-light');
+
+        // Add active class to the clicked button
+        $(this).removeClass('btn-light').addClass('btn-success');
+
+        // Load products for the selected category
         loadProducts(category);
     });
 
@@ -535,9 +543,10 @@ $(document).ready(function () {
                     icon: "success",
                     draggable: true
                 }).then(() => {
+                    console.log(cart);
                     // After clicking "OK" on the success message, generate the receipt content
                     let { content, invoiceNumber } = generateReceiptContent();
-
+                    console.log(invoiceNumber);
                     // Insert receipt content into the modal's preview area
                     $('#receipt-preview-content').html(content);
 

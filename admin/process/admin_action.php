@@ -23,14 +23,15 @@ if (!isset($_SESSION['csrf_token'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
+    
     // Skip CSRF token validation on login or actions that don't require it
-    // if (isset($_POST['action']) && $_POST['action'] !== 'login') {
-    //     // Validate CSRF Token for sensitive actions
-    //     if (!isset($_POST['csrf_token']) || !isValidCSRFToken($_POST['csrf_token'])) {
-    //         echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
-    //         exit();
-    //     }
-    // }
+    if (isset($_POST['action']) && $_POST['action'] !== 'login') {
+        // Validate CSRF Token for sensitive actions
+        if (!isset($_POST['csrf_token']) || !isValidCSRFToken($_POST['csrf_token'])) {
+            echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
+            exit();
+        }
+    }
 
     // Action handler
     switch ($_POST['action']) {
@@ -63,6 +64,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode($result);
             break;
 
+        case 'viewBatches':
+            checkPermission($pdo, 'manage_ingredient');
+            $result = viewBatches($pdo);
+            echo json_encode($result);
+            break;            
+
         case 'addIngredient':
             checkPermission($pdo, 'create_ingredient');
             $result = AddIngredient($pdo);
@@ -81,6 +88,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode($result);
             break;
 
+        case 'addBatch':
+            checkPermission($pdo, 'create_ingredient'); // Check for the permission to add a batch
+            $result = addBatch($pdo);
+            echo json_encode($result);
+            break;
+        case 'moveToWaste':
+            checkPermission($pdo, 'create_waste'); // Ensure user has permission to manage ingredients
+            $result = moveToWaste($pdo);
+            echo json_encode($result);
+            break;
+            
         case 'addCategory':
             checkPermission($pdo, 'create_category');
             $result = AddCategory($pdo);
@@ -133,6 +151,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = deleteDiscount($pdo);
             echo json_encode($result);
             break;
+        case 'getUserPermissionbyID':
+            // Fetch products using the function
+            $result = getRolePermissions($pdo);
+            echo json_encode($result);
+            break;
+
+        case 'addUser':
+            checkPermission($pdo, 'create_user');
+            $result = addUser($pdo);  
+            echo json_encode($result);
+            break;
+
+        case 'updateUser':
+            checkPermission($pdo, 'update_user');
+            $result = updateUser($pdo);  
+            echo json_encode($result);
+            break;
+
+        case 'updateUserPassword':
+            checkPermission($pdo, 'update_user');
+            $result = updateUserPassword($pdo);  
+            echo json_encode($result);
+            break;
+    
+        case 'deleteUser':
+            checkPermission($pdo, 'delete_user');
+            $result = deleteUser($pdo); 
+            echo json_encode($result);
+            break;
+
+        case 'addRole':
+            checkPermission($pdo, 'create_role');
+            $result = addRole($pdo); 
+            echo json_encode($result);
+            break;
+
+        case 'updateRole':
+            checkPermission($pdo, 'update_role');
+            $result = updateRole($pdo);  // Your existing updateRole function
+            echo json_encode($result);
+            break;
+    
+        case 'deleteRole':
+            checkPermission($pdo, 'delete_role');
+            $result = deleteRole($pdo);  // Your existing deleteRole function
+            echo json_encode($result);
+            break;
+
         default:
             echo json_encode(['success' => false, 'message' => 'Invalid action']);
             break;

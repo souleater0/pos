@@ -20002,7 +20002,7 @@ fieldset:disabled .btn {
 .left-sidebar .scroll-sidebar {
     overflow-y: auto;
     padding: 0 16px 0 28px;
-    height: calc(100vh - 80px);
+    height: calc(100vh - 190px);
     border-radius: 12px
 }
 

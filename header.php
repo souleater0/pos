@@ -93,28 +93,38 @@ $route = $_GET['route'] ?? 'home';
               </a>
             </li>
             <?php } ?>
-            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_pos')){?>
+            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_pos') ||userHasPermission($pdo, $_SESSION["user_id"], 'manage_receipt')){?>
             <li>
               <span class="sidebar-divider lg"></span>
             </li>
-            <li class="nav-small-cap" data-bs-toggle="collapse" data-bs-target="#collapseSale" aria-expanded="<?php echo ($route == 'product-management') ? 'true' : 'false'; ?>" aria-controls="collapseUser">
+            <li class="nav-small-cap" data-bs-toggle="collapse" data-bs-target="#collapseSale" aria-expanded="<?php echo ($route == 'pos') ? 'true' : 'false'; ?>" aria-controls="collapseUser">
               <iconify-icon icon="solar:menu-dots-linear" class="nav-small-cap-icon fs-4"></iconify-icon>
               <span class="hide-menu text-uppercase">pos management</span>
             </li>
-            <div class="collapse <?php echo ($route == 'pos' )? 'show' : ''; ?>" " id="collapseSale">
+            <div class="collapse <?php echo ($route == 'pos'|| $route == 'receipt')? 'show' : ''; ?>" " id="collapseSale">
+            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_pos')){?>
             <li class="sidebar-item">
               <a class="sidebar-link <?php echo ($route == 'pos' )? 'active' : ''; ?>" " href="index.php?route=pos" aria-expanded="false">
                 <iconify-icon icon="mdi:network-pos"></iconify-icon>
                 <span class="hide-menu">POS</span>
               </a>
             </li>
+            <?php } ?>
+            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_receipt')){?>
+            <li class="sidebar-item">
+              <a class="sidebar-link <?php echo ($route == 'receipt' )? 'active' : ''; ?>" " href="index.php?route=receipt" aria-expanded="false">
+                <iconify-icon icon="mdi:network-pos"></iconify-icon>
+                <span class="hide-menu">RECEIPT</span>
+              </a>
+            </li>
+            <?php } ?>
             </div>
             <?php } ?>
             <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_product') || userHasPermission($pdo, $_SESSION["user_id"], 'manage_category') || userHasPermission($pdo, $_SESSION["user_id"], 'manage_unit')||userHasPermission($pdo, $_SESSION["user_id"], 'manage_discount')){?>
             <li>
               <span class="sidebar-divider lg"></span>
             </li>
-            <li class="nav-small-cap" data-bs-toggle="collapse" data-bs-target="#collapseProduct" aria-expanded="<?php echo ($route == 'product-management') ? 'true' : 'false'; ?>" aria-controls="collapseProduct">
+            <li class="nav-small-cap" data-bs-toggle="collapse" data-bs-target="#collapseProduct" aria-expanded="<?php echo ($route == 'product-management'|| $route == 'ingredient' || $route == 'category' || $route == 'unit-management' || $route == 'discount') ? 'true' : 'false'; ?>" aria-controls="collapseProduct">
               <iconify-icon icon="solar:menu-dots-linear" class="nav-small-cap-icon fs-4"></iconify-icon>
               <span class="hide-menu text-uppercase">product management</span>
             </li>
@@ -161,6 +171,23 @@ $route = $_GET['route'] ?? 'home';
             <?php } ?>
             </div>
             <?php } ?>
+            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_waste')){?>
+            <li>
+              <span class="sidebar-divider lg"></span>
+            </li>
+            <li class="nav-small-cap" data-bs-toggle="collapse" data-bs-target="#collapseWaste" aria-expanded="<?php echo ($route == 'ingredient-waste') ? 'true' : 'false'; ?>" aria-controls="collapseUser">
+              <iconify-icon icon="solar:menu-dots-linear" class="nav-small-cap-icon fs-4"></iconify-icon>
+              <span class="hide-menu text-uppercase">waste management</span>
+            </li>
+            <div class="collapse <?php echo ($route == 'ingredient-waste' )? 'show' : ''; ?>" " id="collapseWaste">
+            <li class="sidebar-item">
+              <a class="sidebar-link <?php echo ($route == 'ingredient-waste' )? 'active' : ''; ?>" " href="index.php?route=ingredient-waste" aria-expanded="false">
+                <iconify-icon icon="guidance:waste"></iconify-icon>
+                <span class="hide-menu">Ingredient Waste</span>
+              </a>
+            </li>
+            </div>
+            <?php } ?>
             <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_user') || userHasPermission($pdo, $_SESSION["user_id"], 'manage_role')){?>
             <li>
               <span class="sidebar-divider lg"></span>
@@ -188,7 +215,6 @@ $route = $_GET['route'] ?? 'home';
             <?php } ?>
             </div>
             <?php } ?>
-
           </ul>
         </nav>
         <!-- End Sidebar navigation -->
