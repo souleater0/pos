@@ -135,6 +135,26 @@ function getPaymentTypes($pdo) {
     $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+function getNextInvoiceNumber($pdo) {
+    // Get the latest invoice number without starting a new transaction
+    $stmt = $pdo->prepare("SELECT invoice_no FROM transactions ORDER BY transaction_id DESC LIMIT 1");
+    $stmt->execute();
+    $lastInvoice = $stmt->fetchColumn();
+
+    if ($lastInvoice) {
+        // Extract the numeric part from the invoice number and increment it
+        $lastNumber = (int) substr($lastInvoice, 3); // Extract "00001" -> 1
+        $newNumber = $lastNumber + 1;
+    } else {
+        // If no invoices exist, start from 1
+        $newNumber = 1;
+    }
+
+    // Format the new invoice number (TKY00001, TKY00002, ...)
+    return "TKY" . str_pad($newNumber, 5, "0", STR_PAD_LEFT);
+}
+
+
 function getRole($pdo){
     try {
         $query = "SELECT * FROM roles";
@@ -188,6 +208,238 @@ function loginProcess($pdo) {
         );
     }
 }
+
+function addTransaction($pdo) {
+    try {
+        // Check if cartData exists and decode it
+        if (empty($_POST['cartData'])) {
+            return ['success' => false, 'message' => 'Cart data is not provided'];
+        }
+
+        // Decode the cartData JSON
+        $cartData = json_decode($_POST['cartData'], true);  // true returns an associative array
+
+        // Check if the required fields are present in cartData
+        $requiredFields = ['cashierName', 'paymentMethod', 'totals', 'items'];
+
+        foreach ($requiredFields as $field) {
+            if (empty($cartData[$field])) {
+                return ['success' => false, 'message' => "Missing required field: $field"];
+            }
+        }
+
+        // Start a new transaction to ensure consistency
+        $pdo->beginTransaction();
+
+        // Get the next invoice number
+        $invoiceNumber = getNextInvoiceNumber($pdo);
+
+        // Step 1: Insert transaction data
+        $stmt = $pdo->prepare("
+            INSERT INTO transactions (
+                invoice_no, cashier_name, customer_name, payment_type, 
+                transaction_paid, transaction_subtotal, transaction_discount, 
+                transaction_change, transaction_grandtotal, 
+                transaction_date, created_at, updated_at, status
+            ) VALUES (
+                :invoice_no, :cashier_name, :customer_name, :payment_type, 
+                :transaction_paid, :transaction_subtotal, :transaction_discount, 
+                :transaction_change, :transaction_grandtotal, 
+                :transaction_date, NOW(), NOW(), 0  -- Mark as active (status = 0)
+            )
+        ");
+
+        // Bind parameters
+        $stmt->bindParam(':invoice_no', $invoiceNumber);
+        $stmt->bindParam(':cashier_name', $cartData['cashierName']);
+        $stmt->bindParam(':customer_name', $cartData['customerName']);
+        $stmt->bindParam(':payment_type', $cartData['paymentMethod']);
+        $stmt->bindParam(':transaction_paid', $cartData['totals']['amountPaid']);
+        $stmt->bindParam(':transaction_subtotal', $cartData['totals']['subtotal']);
+        $stmt->bindParam(':transaction_discount', $cartData['totals']['totalDiscount']);
+        $stmt->bindParam(':transaction_change', $cartData['totals']['change']);
+        $stmt->bindParam(':transaction_grandtotal', $cartData['totals']['totalAmount']);
+        $stmt->bindParam(':transaction_date', $cartData['date']);
+
+        // Execute transaction insert
+        if (!$stmt->execute()) {
+            $errorInfo = $stmt->errorInfo();  // Store error information in a variable
+            throw new Exception("Failed to insert transaction data: " . implode(", ", $errorInfo));  // Use the variable here
+        }
+
+        // Step 2: Get the last inserted transaction ID (auto-increment)
+        $transactionId = $pdo->lastInsertId();
+
+        // Step 3: Insert transaction items
+        $stmt = $pdo->prepare("
+            INSERT INTO transactions_item (
+                transaction_id, item_name, item_qty, item_price, 
+                item_discount_amt, item_discount_percentage, item_subtotal, created_at
+            ) VALUES (
+                :transaction_id, :item_name, :item_qty, :item_price, 
+                :item_discount_amt, :item_discount_percentage, :item_subtotal, NOW()
+            )
+        ");
+
+        foreach ($cartData['items'] as $item) {
+            // Bind each item data
+            $stmt->bindParam(':transaction_id', $transactionId);  // Using the transactionId from the previous insert
+            $stmt->bindParam(':item_name', $item['itemName']);
+            $stmt->bindParam(':item_qty', $item['quantity']);
+            $stmt->bindParam(':item_price', $item['unitPrice']);
+            $stmt->bindParam(':item_discount_amt', $item['discountAmount']);
+            $stmt->bindParam(':item_discount_percentage', $item['discountPercentage']);
+            $stmt->bindParam(':item_subtotal', $item['itemTotal']);
+
+            // Execute item insert
+            if (!$stmt->execute()) {
+                throw new Exception("Failed to insert item data: " . implode(", ", $stmt->errorInfo()));
+            }
+        }
+
+        // Commit the transaction after both inserts
+        $pdo->commit();
+
+        // Return the inserted transaction ID and invoice number
+        return ['success' => true, 'invoice_no' => $invoiceNumber];
+
+    } catch (Exception $e) {
+        // Rollback in case of error
+        $pdo->rollBack();
+
+        // Log the error message to a file or output it for debugging
+        error_log("Error in transaction: " . $e->getMessage());
+
+        // Provide a more specific message to the user
+        return ['success' => false, 'message' => "An error occurred while processing the transaction: " . $e->getMessage()];
+    }
+}
+
+
+//TRANSACTION END
+
+// RECEIPT START
+
+function viewReceipt($pdo) {
+    // Get invoice number from the POST request
+    $invoice_number = $_POST['invoice_number'];
+    
+    // Prepare query to get the transaction details
+    $stmt = $pdo->prepare("SELECT * FROM transactions WHERE invoice_no = ?");
+    $stmt->execute([$invoice_number]);
+    $transaction = $stmt->fetch();
+    
+    // Check if transaction exists
+    if ($transaction) {
+        // Get the items in the transaction
+        $stmt_items = $pdo->prepare("SELECT * FROM transactions_item WHERE transaction_id = ?");
+        $stmt_items->execute([$transaction['transaction_id']]);
+        $items = $stmt_items->fetchAll();
+        
+        // Prepare the response with transaction and item details
+        $response = [
+            'success' => true,
+            'transaction_data' => [
+                'invoice_no' => $transaction['invoice_no'],
+                'cashier_name' => $transaction['cashier_name'],
+                'customer_name' => $transaction['customer_name'],
+                'payment_type' => $transaction['payment_type'],
+                'transaction_date' => $transaction['transaction_date'],
+                'transaction_grandtotal' => $transaction['transaction_grandtotal'],
+                'transaction_paid' => $transaction['transaction_paid'],
+                'transaction_change' => $transaction['transaction_change'],
+                'items' => $items
+            ]
+        ];
+    } else {
+        // If transaction not found, return failure response
+        $response = [
+            'success' => false,
+            'message' => 'Transaction not found.'
+        ];
+    }
+
+    return $response;
+}
+
+// Function to void a transaction
+function voidReceipt($pdo) {
+    // Ensure invoice number is provided
+    if (!isset($_POST['invoice_number']) || empty($_POST['invoice_number'])) {
+        return [
+            'success' => false,
+            'message' => 'Invoice number is required.'
+        ];
+    }
+
+    $invoice_number = $_POST['invoice_number'];
+
+    // Start a transaction for safety
+    $pdo->beginTransaction();
+
+    try {
+        // Check the current status of the transaction
+        $stmt_check = $pdo->prepare("SELECT `status` FROM `transactions` WHERE `invoice_no` = ?");
+        $stmt_check->execute([$invoice_number]);
+        $transaction = $stmt_check->fetch();
+
+        // If no transaction is found, throw an error
+        if (!$transaction) {
+            throw new Exception('No matching transaction found for invoice number: ' . $invoice_number);
+        }
+
+        // If the transaction is already voided, return an error
+        if ($transaction['status'] == 1) {
+            // Unvoid the transaction if it is already voided
+            $stmt_update = $pdo->prepare("UPDATE `transactions` SET `status` = 0 WHERE `invoice_no` = ?");
+            $stmt_update->execute([$invoice_number]);
+
+            // Check if the transaction was updated
+            if ($stmt_update->rowCount() === 0) {
+                throw new Exception('Failed to unvoid the transaction.');
+            }
+
+            // Commit the transaction
+            $pdo->commit();
+
+            return [
+                'success' => true,
+                'message' => 'Transaction successfully unvoided.'
+            ];
+        } else {
+            // Void the transaction if it is not already voided
+            $stmt_update = $pdo->prepare("UPDATE `transactions` SET `status` = 1 WHERE `invoice_no` = ?");
+            $stmt_update->execute([$invoice_number]);
+
+            // Check if the transaction was updated
+            if ($stmt_update->rowCount() === 0) {
+                throw new Exception('Failed to update the transaction status.');
+            }
+
+            // Commit the transaction
+            $pdo->commit();
+
+            return [
+                'success' => true,
+                'message' => 'Transaction successfully voided.'
+            ];
+        }
+    } catch (Exception $e) {
+        // If something goes wrong, roll back the transaction
+        $pdo->rollBack();
+
+        return [
+            'success' => false,
+            'message' => 'Failed to void or unvoid the transaction: ' . $e->getMessage()
+        ];
+    }
+}
+
+
+
+
+// RECEIPT END
+
 // PRODUCT START
 function addProduct($pdo) {
     try {

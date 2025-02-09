@@ -45,7 +45,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = getProducts($pdo);
             echo json_encode($result, JSON_UNESCAPED_SLASHES);
             break;
-            
+
+        case 'fetchInvoiceNo':
+            // Fetch products using the function
+            $result = getNextInvoiceNumber($pdo);
+            echo json_encode($result, JSON_UNESCAPED_SLASHES);
+            break;
+
+        case 'addTransaction':
+            // Fetch products using the function
+            $result = addTransaction($pdo);
+            echo json_encode($result);
+            break;
+        
+        case 'viewReceipt':
+            checkPermission($pdo, 'manage_receipt');
+            // Fetch products using the function
+            $result = viewReceipt($pdo);
+            echo json_encode($result);
+            break;
+
+        case 'voidReceipt':
+            checkPermission($pdo, 'void_receipt');
+            // Fetch products using the function
+            $result = voidReceipt($pdo);
+            echo json_encode($result);
+            break;
+
         case 'addProduct':
             checkPermission($pdo, 'create_product');
             $result = addProduct($pdo);  // The function handles validation

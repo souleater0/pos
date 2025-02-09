@@ -438,17 +438,128 @@ $(document).ready(function () {
         loadProducts(category);
     });
 
-    function generateReceiptContent() {
+    function generateCartJSON() {
         let date = new Date();
-        let formattedDate = date.toISOString().slice(0, 10) + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        let invoiceNumber = Math.floor(100000 + Math.random() * 900000);
+        let formattedDate = date.getFullYear() + "-" +
+        String(date.getMonth() + 1).padStart(2, '0') + "-" +
+        String(date.getDate()).padStart(2, '0') + " " +
+        String(date.getHours()).padStart(2, '0') + ":" +
+        String(date.getMinutes()).padStart(2, '0') + ":" +
+        String(date.getSeconds()).padStart(2, '0');
+        let cashierName = "<?php echo $_SESSION['username']; ?>";
         let customerName = $('#customer-name').val() || "N/A";
         let paymentMethod = $('#payment-method').val();
+        let paidAmount = parseFloat($('#pay-amount').val()) || 0;
 
-        // Initialize variables for total calculations
         let totalSubtotal = 0;
         let totalDiscount = 0;
         let totalAmountAfterDiscount = 0;
+
+        let cartItems = [];
+        let table = $('#cart').DataTable();
+
+        table.rows().every(function() {
+            let row = this.node();
+            let rowData = this.data(); // Fetching all data for the row
+
+            // Assuming columns: [itemName, qty, unitPrice, discount]
+            let name = rowData[0]; // Item name (column 1)
+            let qty = parseInt($(row).find('.qty-input').val()) || 1; // Quantity from input field
+            let unitPrice = parseFloat(rowData[3].replace(/[^\d.]/g, '')); // Unit price (column 4, cleaned of non-numeric)
+            let discount = parseFloat($(row).find('.discount-dropdown').val()) || 0; // Discount from dropdown
+
+            let subtotal = unitPrice * qty;
+            let discountAmount = (subtotal * discount) / 100; // Discounted amount for this item
+            let discountedSubtotal = subtotal - discountAmount;
+            totalSubtotal += subtotal;
+            totalAmountAfterDiscount += discountedSubtotal;
+            
+            // Add item data including the discount amount
+            cartItems.push({
+                itemName: name,
+                quantity: qty,
+                unitPrice: unitPrice.toFixed(2),
+                discountPercentage: discount,
+                discountAmount: discountAmount.toFixed(2), // Add the discounted amount
+                itemTotal: discountedSubtotal.toFixed(2)
+            });
+        });
+
+        let globalDiscount = parseFloat($('#discount').val()) || 0;
+        totalDiscount = (totalAmountAfterDiscount * globalDiscount) / 100;
+        let totalBalance = totalAmountAfterDiscount - totalDiscount;
+        let totalChange = paidAmount - totalBalance;
+
+        let cartData = {
+            date: formattedDate,
+            cashierName: cashierName,
+            customerName: customerName,
+            paymentMethod: paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1),
+            items: cartItems,
+            totals: {
+                subtotal: totalAmountAfterDiscount.toFixed(2),
+                totalDiscount: totalDiscount.toFixed(2),
+                totalAmount: totalBalance.toFixed(2),
+                amountPaid: paidAmount.toFixed(2),
+                change: totalChange.toFixed(2)
+            }
+        };
+
+        return JSON.stringify(cartData, null, 2);
+    }
+
+
+    function generateReceiptContent(invoiceNumber) {
+        let date = new Date();
+        let formattedDate = date.getFullYear() + "-" +
+            String(date.getMonth() + 1).padStart(2, '0') + "-" +
+            String(date.getDate()).padStart(2, '0') + " " +
+            String(date.getHours()).padStart(2, '0') + ":" +
+            String(date.getMinutes()).padStart(2, '0') + ":" +
+            String(date.getSeconds()).padStart(2, '0');
+        let cashierName = "<?php echo $_SESSION['username']; ?>";
+        let customerName = $('#customer-name').val() || "N/A";
+        let paymentMethod = $('#payment-method').val();
+        let paidAmount = parseFloat($('#pay-amount').val()) || 0;
+
+        let totalSubtotal = 0;
+        let totalDiscount = 0;
+        let totalAmountAfterDiscount = 0;
+
+        let cartItems = [];
+        let table = $('#cart').DataTable();
+
+        table.rows().every(function () {
+            let row = this.node();
+            let rowData = this.data(); // Fetching all data for the row
+
+            // Assuming columns: [itemName, qty, unitPrice, discount]
+            let name = rowData[0]; // Item name (column 1)
+            let qty = parseInt($(row).find('.qty-input').val()) || 1; // Quantity from input field
+            let unitPrice = parseFloat(rowData[3].replace(/[^\d.]/g, '')); // Unit price (column 4, cleaned of non-numeric)
+            let discount = parseFloat($(row).find('.discount-dropdown').val()) || 0; // Discount from dropdown
+
+            let subtotal = unitPrice * qty;
+            let discountAmount = (subtotal * discount) / 100; // Discounted amount for this item
+            let discountedSubtotal = subtotal - discountAmount;
+            totalSubtotal += subtotal;
+            totalAmountAfterDiscount += discountedSubtotal;
+
+            // Add item data including the discount amount
+            cartItems.push({
+                itemName: name,
+                quantity: qty,
+                unitPrice: unitPrice.toFixed(2),
+                discountPercentage: discount,
+                discountAmount: discountAmount.toFixed(2), // Add the discounted amount
+                itemTotal: discountedSubtotal.toFixed(2)
+            });
+        });
+
+        let globalDiscount = parseFloat($('#discount').val()) || 0;
+        totalDiscount = (totalAmountAfterDiscount * globalDiscount) / 100;
+        let totalBalance = totalAmountAfterDiscount - totalDiscount;
+        let totalChange = paidAmount - totalBalance;
 
         let receiptContent = `
             <div class='receipt text-dark' style='width: 100%; margin: 0; padding: 0px; font-family: Arial, sans-serif; text-align: left;'>
@@ -457,50 +568,25 @@ $(document).ready(function () {
                     <p style="margin:5px 2px;"><b>Address:</b> Sto. Nino Plaridel, Bulacan <br><b>Contact No:</b> 09392887055</p>
                 </div>
                 <div style='border-top: none; border-bottom: 1px dashed black; padding: 2px 0;'>
-                    <p style="margin:5px 2px;"><b>Invoice:</b> ${invoiceNumber} <br><b>Cashier:</b> Admin <br><b>Time:</b> ${formattedDate}</p>
+                    <p style="margin:5px 2px;"><b>Invoice:</b> ${invoiceNumber} <br><b>Cashier:</b> ${cashierName} <br><b>Time:</b> ${formattedDate}</p>
                     <p><b>Customer:</b> ${customerName} <br><b>Payment Type:</b> ${paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)}</p>
                 </div>
                 <table width='100%' style='border-collapse: collapse; margin-top: 5px; text-align: left;'>
                     <tr><th>Item</th><th>Qty</th><th>Price</th><th>Amt</th></tr>
         `;
 
-        // Extract data from the DataTable
-        let table = $('#cart').DataTable();
-
-        table.rows().every(function() {
-            let row = this.node();
-            let name = $(row).find('td:nth-child(1)').text(); // Item name
-            let qty = parseInt($(row).find('.qty-input').val()) || 1; // Quantity
-            let priceText = $(row).find('td:nth-child(4)').text().replace(/[^\d.]/g, ''); // Price (remove non-numeric characters)
-            let unitPrice = parseFloat(priceText); // Correct unit price (no change based on quantity)
-
-            let discount = parseFloat($(row).find('.discount-dropdown').val()) || 0; // Discount percentage
-            let subtotal = unitPrice * qty; // Subtotal before discount
-            let itemDiscountAmount = (subtotal * discount) / 100; // Discount for this item
-
-            let discountedSubtotal = subtotal - itemDiscountAmount; // Discounted subtotal for the item
-            totalSubtotal += subtotal; // Total before discount
-            totalAmountAfterDiscount += discountedSubtotal; // Total after discount applied
-            let globalDiscount = parseFloat($('#discount').val()) || 0;
-            totalDiscount = (totalAmountAfterDiscount * globalDiscount) / 100; // Total discount for all items
-
-            let discountLabel = itemDiscountAmount > 0 ? `<br><i>Discount ${discount}% (-₱${itemDiscountAmount.toFixed(2)})</i>` : '';
-
+        cartItems.forEach(item => {
+            let discountLabel = item.discountAmount > 0 ? `<br><i>Discount ${item.discountPercentage}% (-₱${item.discountAmount})</i>` : '';
             receiptContent += `
                 <tr>
-                    <td>${name}${discountLabel}</td>
-                    <td>${qty}</td>
-                    <td>₱${unitPrice.toFixed(2)}</td>
-                    <td>₱${discountedSubtotal.toFixed(2)}</td>
+                    <td>${item.itemName}${discountLabel}</td>
+                    <td>${item.quantity}</td>
+                    <td>₱${item.unitPrice}</td>
+                    <td>₱${item.itemTotal}</td>
                 </tr>`;
         });
 
-        // Calculate final values for the receipt
-        let totalBalance = totalAmountAfterDiscount - totalDiscount; // This is the total after all discounts
-        let paidAmount = parseFloat($('#pay-amount').val()) || 0; // Paid amount from user input
-        let totalChange = paidAmount - totalBalance; // Change to be returned to the customer
-
-        // Update the receipt content with correct totals
+        // Update the receipt content with totals
         receiptContent += `
             </table>
             <div style='border-top: 1px dashed black; padding: 5px 0; margin:5px 2px;'>
@@ -516,8 +602,10 @@ $(document).ready(function () {
         </div>
         `;
 
-        return { content: receiptContent, invoiceNumber };
+        return receiptContent;
     }
+
+
 
     $(document).on('click', '#pay', function () {
         updateTotal();
@@ -543,27 +631,44 @@ $(document).ready(function () {
                     icon: "success",
                     draggable: true
                 }).then(() => {
-                    console.log(cart);
-                    // After clicking "OK" on the success message, generate the receipt content
-                    let { content, invoiceNumber } = generateReceiptContent();
-                    console.log(invoiceNumber);
-                    // Insert receipt content into the modal's preview area
-                    $('#receipt-preview-content').html(content);
+                    // Get cart data (without invoice number)
+                    let cartData = generateCartJSON();
 
-                    // Show the print confirmation modal
-                    $('#confirm-print-modal').modal('show');
+                    // Send data to backend for transaction creation
+                    $.ajax({
+                        type: 'POST',
+                        url: 'admin/process/admin_action.php',
+                        data: {
+                            action: 'addTransaction',
+                            cartData: cartData,
+                            csrf_token: csrfToken  // Send CSRF token with the request
+                        },
+                        dataType: "json",
+                        success: function(response) {
+                            
+                            // let result = JSON.parse(response);
+                            let invoiceNumber = response.invoice_no;
+                            let receiptContent = generateReceiptContent(invoiceNumber);
+                            //console.log(receiptContent);  // Log content to check its value
+                            $('#receipt-preview-content').html(receiptContent); 
 
-                    // Reset and prepare for the next transaction if needed
-                    // $('#pay-amount').val("");
-                    // $('#customer-name').val("");
-                    // $('#discount').prop('selectedIndex', 0);
-                    // $('#payment-method').prop('selectedIndex', 0);
-                    // table.clear().draw();
-                    updateTotal();
+                            // Show the print confirmation modal
+                            $('#confirm-print-modal').modal('show');
+                        },
+                        error: function(xhr, status, error) {
+                            console.error("Error creating transaction:", error);
+                            Swal.fire({
+                                title: "An error occurred. Please try again.",
+                                icon: "error",
+                                draggable: true
+                            });
+                        }
+                    });
                 });
             }
         }
     });
+
 
     $('#confirm-print').click(function() {
     let printWindow = window.open('', '', 'width=300,height=600');

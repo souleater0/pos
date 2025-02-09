@@ -39,6 +39,10 @@
                             MIN(b.expiry_date) ASC;
                         ';
                 break;
+            case 'transactions':
+                $sql = 'SELECT * FROM transactions
+                        ORDER BY invoice_no ASC';
+                break;
             case 'category':
                 $sql = 'SELECT * FROM category
                         ORDER BY category_name ASC';
