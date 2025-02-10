@@ -55,7 +55,11 @@
                 $sql = 'SELECT * FROM discount
                         ORDER BY discount_percentage ASC';
                 break;
-            case 'ing_waste':
+            case 'product_waste':
+                $sql = 'SELECT * FROM product_waste
+                        ORDER BY waste_id DESC';
+                break;
+            case 'ingredient_waste':
                 $sql = 'SELECT * FROM ingredient_waste
                         ORDER BY waste_id DESC';
                 break;

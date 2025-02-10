@@ -407,20 +407,34 @@ $(document).ready(function() {
 
   // Open the Waste Modal when Move to Waste button is clicked
   $('#viewBatchesModal').on('click', 'button.btn-movetowaste', function() {
-      var batch_id = $(this).data('batch-id');  // Retrieve batch ID from button data
-      var batch_quantity = $(this).data('quantity');
-      var batch_barcode = $(this).data('barcode');
+    var batch_id = $(this).data('batch-id');
+    var batch_quantity = $(this).data('quantity');
+    var batch_barcode = $(this).data('barcode');
 
-      console.log(batch_id, batch_quantity, batch_barcode);
+    console.log(batch_id, batch_quantity, batch_barcode);
 
-      // Set the batch ID and other details in the modal
-      $('#wasteModal').find('#waste_qty').val(batch_quantity); // Set the default quantity
-      $('#wasteModal').find('#waste_reason').val(''); // Clear reason input
-      $('#wasteModal').attr('data-batch-id', batch_id);  // Store batch ID in the modal
+    // Set the batch ID and other details in the modal
+    $('#wasteModal').find('#waste_qty').val(batch_quantity); // Set the default quantity
+    $('#wasteModal').find('#waste_reason').val(''); // Clear reason input
+    $('#wasteModal').attr('data-batch-id', batch_id);  // Store batch ID in the modal
 
-      // Show the Waste Modal
-      $('#wasteModal').modal('show');
-  });
+    // Set the available quantity as a data attribute
+    $('#wasteModal').find('#waste_qty').data('available-qty', batch_quantity);
+
+    // Show the Waste Modal
+    $('#wasteModal').modal('show');
+});
+
+// Restrict the waste quantity input to the available quantity
+$('#waste_qty').on('input', function() {
+    var availableQty = parseInt($(this).data('available-qty')); // Get the available quantity
+    var currentValue = parseInt($(this).val());
+
+    // If the current value is larger than available quantity or negative, reset it to available quantity
+    if (currentValue > availableQty || currentValue < 0) {
+        $(this).val(availableQty);  // Reset to available quantity
+    }
+});
 
   // Handle the submission of the waste form
   $('#moveToWasteBtn').click(function() {

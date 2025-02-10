@@ -120,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode($result);
             break;
         case 'moveToWaste':
-            checkPermission($pdo, 'create_waste'); // Ensure user has permission to manage ingredients
+            checkPermission($pdo, 'create_ingredient_waste'); // Ensure user has permission to manage ingredients
             $result = moveToWaste($pdo);
             echo json_encode($result);
             break;
@@ -177,12 +177,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = deleteDiscount($pdo);
             echo json_encode($result);
             break;
+            
         case 'getUserPermissionbyID':
             // Fetch products using the function
             $result = getRolePermissions($pdo);
             echo json_encode($result);
             break;
 
+        case 'addProductWaste':
+            checkPermission($pdo, 'create_product_waste');
+            $result = addProductWaste($pdo);
+            echo json_encode($result);
+            break;
+        
+        case 'updateProductWaste':
+            checkPermission($pdo, 'update_product_waste');
+            $result = updateProductWaste($pdo);
+            echo json_encode($result);
+            break;
+        
+        case 'deleteProductWaste':
+            checkPermission($pdo, 'delete_product_waste');
+            $result = deleteProductWaste($pdo);
+            echo json_encode($result);
+            break;
+
+        case 'addIngredientWaste':
+            checkPermission($pdo, 'create_ingredient_waste');
+            $result = addIngredientWaste($pdo);
+            echo json_encode($result);
+            break;
+        
+        case 'updateIngredientWaste':
+            checkPermission($pdo, 'update_ingredient_waste');
+            $result = updateIngredientWaste($pdo);
+            echo json_encode($result);
+            break;
+        
+        case 'deleteIngredientWaste':
+            checkPermission($pdo, 'delete_ingredient_waste');
+            $result = deleteIngredientWaste($pdo);
+            echo json_encode($result);
+            break;
+            
         case 'addUser':
             checkPermission($pdo, 'create_user');
             $result = addUser($pdo);  

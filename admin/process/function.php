@@ -111,9 +111,11 @@ function getProducts($pdo) {
     }
 }
 
-
-
-
+function getProductOptions($pdo) {
+    $stmt = $pdo->prepare("SELECT * FROM product WHERE status = 0");
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 function getCategories($pdo) {
     $stmt = $pdo->prepare("SELECT category_id, category_name FROM category");
     $stmt->execute();
@@ -935,12 +937,15 @@ function moveToWaste($pdo) {
             $delete_stmt->execute(['batch_id' => $batch_id]);
         }
 
-        // Insert a record into the ingredient_waste table, including the reported_by (display_name)
-        $insert_stmt = $pdo->prepare("INSERT INTO ingredient_waste (ingredient_name, ingredient_price, quantity_wasted, units, reason, reported_by, created_at, updated_at) 
-                                      SELECT i.ingredient_name, i.price_per_unit, :waste_qty, i.unit_id, :waste_reason, :reported_by, NOW(), NOW() 
-                                      FROM ingredient_batch ib 
-                                      JOIN ingredient i ON ib.ingredient_id = i.ingredient_id 
-                                      WHERE ib.batch_id = :batch_id");
+        // Insert a record into the ingredient_waste table, including the barcode, reported_by (display_name), and unit short name
+        $insert_stmt = $pdo->prepare("
+            INSERT INTO ingredient_waste (ingredient_name, ingredient_price, quantity_wasted, units, reason, ingredient_barcode, reported_by, created_at, updated_at) 
+            SELECT i.ingredient_name, i.price_per_unit, :waste_qty, u.short_name, :waste_reason, ib.barcode, :reported_by, NOW(), NOW() 
+            FROM ingredient_batch ib 
+            JOIN ingredient i ON ib.ingredient_id = i.ingredient_id 
+            JOIN unit u ON i.unit_id = u.unit_id 
+            WHERE ib.batch_id = :batch_id
+        ");
         $insert_stmt->execute([
             'waste_qty' => $waste_qty,
             'waste_reason' => $waste_reason,
@@ -1279,6 +1284,357 @@ function deleteDiscount($pdo) {
 }
 
 //DISCOUNT END
+
+// PRODUCT WASTE START
+
+function addProductWaste($pdo) {
+    try {
+        $product_id = intval($_POST['product_id'] ?? 0); // Use product_id
+        $waste_quantity = intval($_POST['quantity_wasted'] ?? 0); // Match the payload key
+        $waste_reason = trim($_POST['waste_reason'] ?? '');
+        $reported_by = trim($_POST['reported_by'] ?? '');
+
+        // Validation: Check if fields are empty
+        if (empty($product_id) || empty($waste_quantity) || empty($waste_reason) || empty($reported_by)) {
+            return ['success' => false, 'message' => 'All fields are required'];
+        }
+
+        // Check if product exists and fetch product_name and product_price
+        $stmt_check_product = $pdo->prepare("SELECT product_name, product_price FROM product WHERE product_id = :product_id");
+        $stmt_check_product->bindParam(':product_id', $product_id);
+        $stmt_check_product->execute();
+
+        $product = $stmt_check_product->fetch(PDO::FETCH_ASSOC);
+
+        if (!$product) {
+            return ['success' => false, 'message' => 'Product not found'];
+        }
+
+        $product_name = $product['product_name']; // Get product_name
+        $product_price = $product['product_price']; // Get product_price
+
+        // Insert new waste entry
+        $stmt = $pdo->prepare("INSERT INTO product_waste (product_name, product_price, quantity_wasted, reason, reported_by) 
+                               VALUES (:product_name, :product_price, :waste_quantity, :waste_reason, :reported_by)");
+        $stmt->bindParam(':product_name', $product_name); // Insert product_name
+        $stmt->bindParam(':product_price', $product_price); // Insert product_price
+        $stmt->bindParam(':waste_quantity', $waste_quantity);
+        $stmt->bindParam(':waste_reason', $waste_reason);
+        $stmt->bindParam(':reported_by', $reported_by);
+
+        if ($stmt->execute()) {
+            return ['success' => true, 'message' => 'Waste entry added successfully'];
+        } else {
+            return ['success' => false, 'message' => 'Failed to add waste entry'];
+        }
+    } catch (PDOException $e) {
+        error_log("Error: " . $e->getMessage());
+        return ['success' => false, 'message' => 'Database error occurred'];
+    }
+}
+
+
+function updateProductWaste($pdo) {
+    try {
+        $waste_id = intval($_POST['update_id'] ?? 0); // Using update_id from payload
+        $product_id = intval($_POST['product_id'] ?? 0); // Use product_id
+        $waste_quantity = intval($_POST['quantity_wasted'] ?? 0); // Match the payload key
+        $waste_reason = trim($_POST['waste_reason'] ?? '');
+        $reported_by = trim($_POST['reported_by'] ?? '');
+
+        // Validation: Check if fields are empty
+        if (empty($waste_id) || empty($product_id) || empty($waste_quantity) || empty($waste_reason) || empty($reported_by)) {
+            return ['success' => false, 'message' => 'All fields are required'];
+        }
+
+        // Check if waste entry exists
+        $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM product_waste WHERE waste_id = :waste_id");
+        $stmt_check->bindParam(':waste_id', $waste_id);
+        $stmt_check->execute();
+
+        if ($stmt_check->fetchColumn() == 0) {
+            return ['success' => false, 'message' => 'Waste entry not found'];
+        }
+
+        // Check if product exists and fetch product_name and product_price
+        $stmt_check_product = $pdo->prepare("SELECT product_name, product_price FROM product WHERE product_id = :product_id");
+        $stmt_check_product->bindParam(':product_id', $product_id);
+        $stmt_check_product->execute();
+
+        $product = $stmt_check_product->fetch(PDO::FETCH_ASSOC);
+
+        if (!$product) {
+            return ['success' => false, 'message' => 'Product not found'];
+        }
+
+        $product_name = $product['product_name']; // Get product_name
+        $product_price = $product['product_price']; // Get product_price
+
+        // Update waste entry
+        $stmt = $pdo->prepare("UPDATE product_waste SET product_name = :product_name, product_price = :product_price, 
+                               quantity_wasted = :waste_quantity, reason = :waste_reason, reported_by = :reported_by 
+                               WHERE waste_id = :waste_id");
+        $stmt->bindParam(':product_name', $product_name); // Insert product_name
+        $stmt->bindParam(':product_price', $product_price); // Insert product_price
+        $stmt->bindParam(':waste_quantity', $waste_quantity);
+        $stmt->bindParam(':waste_reason', $waste_reason);
+        $stmt->bindParam(':reported_by', $reported_by);
+        $stmt->bindParam(':waste_id', $waste_id);
+
+        if ($stmt->execute()) {
+            return ['success' => true, 'message' => 'Waste entry updated successfully'];
+        } else {
+            return ['success' => false, 'message' => 'Failed to update waste entry'];
+        }
+    } catch (PDOException $e) {
+        error_log("Error: " . $e->getMessage());
+        return ['success' => false, 'message' => 'Database error occurred'];
+    }
+}
+
+function deleteProductWaste($pdo) {
+    try {
+        $waste_id = intval($_POST['waste_id'] ?? 0);
+
+        // Validation: Check if waste ID is empty
+        if (empty($waste_id)) {
+            return ['success' => false, 'message' => 'Waste ID is required'];
+        }
+
+        // Check if waste entry exists
+        $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM product_waste WHERE waste_id = :waste_id");
+        $stmt_check->bindParam(':waste_id', $waste_id);
+        $stmt_check->execute();
+
+        if ($stmt_check->fetchColumn() == 0) {
+            return ['success' => false, 'message' => 'Waste entry not found'];
+        }
+
+        // Delete waste entry
+        $stmt = $pdo->prepare("DELETE FROM product_waste WHERE waste_id = :waste_id");
+        $stmt->bindParam(':waste_id', $waste_id);
+
+        if ($stmt->execute()) {
+            return ['success' => true, 'message' => 'Waste entry deleted successfully'];
+        } else {
+            return ['success' => false, 'message' => 'Failed to delete waste entry'];
+        }
+    } catch (PDOException $e) {
+        error_log("Error: " . $e->getMessage());
+        return ['success' => false, 'message' => 'Database error occurred'];
+    }
+}
+
+// PRODUCT WASTE END
+
+// INGREDIENT WASTE START
+function addIngredientWaste($pdo) {
+    try {
+        $ingredient_id = trim($_POST['ingredient_id'] ?? '');
+        $quantity_wasted = trim($_POST['quantity_wasted'] ?? '');
+        $reason = trim($_POST['waste_reason'] ?? '');
+        $reported_by = trim($_POST['reported_by'] ?? '');
+
+        if (empty($ingredient_id) || empty($quantity_wasted) || empty($reason) || empty($reported_by)) {
+            return ['success' => false, 'message' => 'All fields are required'];
+        }
+
+        // Fetch ingredient details including unit short_name
+        $stmt = $pdo->prepare("
+            SELECT i.ingredient_name, i.price_per_unit, u.short_name 
+            FROM ingredient i 
+            LEFT JOIN unit u ON i.unit_id = u.unit_id 
+            WHERE i.ingredient_id = ?
+        ");
+        $stmt->execute([$ingredient_id]);
+        $ingredient = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$ingredient) {
+            return ['success' => false, 'message' => 'Invalid ingredient selected'];
+        }
+
+        $ingredient_name = $ingredient['ingredient_name'];
+        $ingredient_price = $ingredient['price_per_unit'];
+        $unit_short_name = $ingredient['short_name'] ?? '';
+
+        // FIFO Logic: Deduct from ingredient_batch
+        $pdo->beginTransaction();
+        $stmt = $pdo->prepare("SELECT batch_id, barcode, quantity FROM ingredient_batch WHERE ingredient_id = ? ORDER BY created_at ASC");
+        $stmt->execute([$ingredient_id]);
+        $batches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $remaining_qty = $quantity_wasted;
+        $waste_entries = []; // Store data for separate waste entries
+
+        foreach ($batches as $batch) {
+            if ($remaining_qty <= 0) break;
+
+            $deduct_qty = min($batch['quantity'], $remaining_qty);
+            $remaining_qty -= $deduct_qty;
+
+            // Update or delete batch
+            if ($batch['quantity'] - $deduct_qty > 0) {
+                $updateStmt = $pdo->prepare("UPDATE ingredient_batch SET quantity = quantity - ? WHERE batch_id = ?");
+                $updateStmt->execute([$deduct_qty, $batch['batch_id']]);
+            } else {
+                $deleteStmt = $pdo->prepare("DELETE FROM ingredient_batch WHERE batch_id = ?");
+                $deleteStmt->execute([$batch['batch_id']]);
+            }
+
+            // Store waste entry per batch barcode (or lack of it)
+            $waste_entries[] = [
+                'ingredient_barcode' => $batch['barcode'] ?: null, // If empty, store NULL
+                'ingredient_name' => $ingredient_name,
+                'ingredient_price' => $ingredient_price,
+                'quantity_wasted' => $deduct_qty,
+                'units' => $unit_short_name, // Include unit short_name
+                'reason' => $reason,
+                'reported_by' => $reported_by
+            ];
+        }
+
+        if ($remaining_qty > 0) {
+            $pdo->rollBack();
+            return ['success' => false, 'message' => 'Not enough stock available'];
+        }
+
+        // Insert separate waste records per batch barcode
+        $stmt = $pdo->prepare("INSERT INTO ingredient_waste (ingredient_barcode, ingredient_name, ingredient_price, quantity_wasted, units, reason, reported_by, created_at) 
+                               VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+
+        foreach ($waste_entries as $entry) {
+            $stmt->execute([
+                $entry['ingredient_barcode'],
+                $entry['ingredient_name'],
+                $entry['ingredient_price'],
+                $entry['quantity_wasted'],
+                $entry['units'],
+                $entry['reason'],
+                $entry['reported_by']
+            ]);
+        }
+
+        $pdo->commit();
+        return ['success' => true, 'message' => 'Waste added successfully'];
+
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        error_log("Error in addIngredientWaste: " . $e->getMessage());
+        return ['success' => false, 'message' => 'Error adding waste: ' . $e->getMessage()];
+    }
+}
+function updateIngredientWaste($pdo) {
+    try {
+        $waste_id = trim($_POST['update_id'] ?? '');
+        $reason = trim($_POST['reason'] ?? '');
+
+        if (empty($waste_id) || empty($reason)) {
+            return ['success' => false, 'message' => 'Waste ID and Reason are required'];
+        }
+
+        // Begin transaction
+        $pdo->beginTransaction();
+
+        // Fetch the existing waste record
+        $stmt = $pdo->prepare("SELECT waste_id FROM ingredient_waste WHERE waste_id = ?");
+        $stmt->execute([$waste_id]);
+        $old_waste = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$old_waste) {
+            throw new Exception("Waste record not found.");
+        }
+
+        // Update the waste record with the new reason
+        $stmt = $pdo->prepare("UPDATE ingredient_waste SET reason = ?, updated_at = NOW() WHERE waste_id = ?");
+        $stmt->execute([$reason, $waste_id]);
+
+        // Commit the transaction
+        $pdo->commit();
+        return ['success' => true, 'message' => 'Waste record updated successfully'];
+
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        error_log("Error in updateIngredientWaste: " . $e->getMessage());
+        return ['success' => false, 'message' => 'Error updating waste: ' . $e->getMessage()];
+    }
+}
+
+
+function deleteIngredientWaste($pdo) {
+    try {
+        $waste_id = trim($_POST['waste_id'] ?? '');
+
+        if (empty($waste_id)) {
+            return ['success' => false, 'message' => 'Invalid waste ID'];
+        }
+
+        $pdo->beginTransaction();
+
+        // Fetch waste record details (including barcode)
+        $stmt = $pdo->prepare("SELECT ingredient_barcode, ingredient_name, quantity_wasted FROM ingredient_waste WHERE waste_id = ?");
+        $stmt->execute([$waste_id]);
+        $waste = $stmt->fetch();
+
+        if (!$waste) {
+            throw new Exception("Waste record not found.");
+        }
+
+        // Fetch the ingredient_id using ingredient_name from the ingredient table
+        $stmt = $pdo->prepare("SELECT ingredient_id FROM ingredient WHERE ingredient_name = ?");
+        $stmt->execute([$waste['ingredient_name']]);
+        $ingredient = $stmt->fetch();
+
+        if (!$ingredient) {
+            throw new Exception("Ingredient not found.");
+        }
+
+        $ingredient_id = $ingredient['ingredient_id'];
+        $barcode = $waste['ingredient_barcode']; // Can be empty ('') or have a value
+        $remaining_qty = $waste['quantity_wasted'];
+
+        // Fetch batches that match the exact barcode first (FIFO order)
+        $stmt = $pdo->prepare("SELECT batch_id, barcode, quantity FROM ingredient_batch WHERE ingredient_id = ? AND barcode = ? ORDER BY created_at ASC");
+        $stmt->execute([$ingredient_id, $barcode]);
+        $batches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // If no batch with exact barcode exists, fetch only non-barcoded batches (FIFO)
+        if (empty($batches) && empty($barcode)) {
+            $stmt = $pdo->prepare("SELECT batch_id, barcode, quantity FROM ingredient_batch WHERE ingredient_id = ? AND (barcode IS NULL OR barcode = '') ORDER BY created_at ASC");
+            $stmt->execute([$ingredient_id]);
+            $batches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        // Try to update existing batch
+        $updated = false;
+        foreach ($batches as $batch) {
+            if ($remaining_qty <= 0) break;
+
+            // Add back the quantity to an existing batch
+            $pdo->prepare("UPDATE ingredient_batch SET quantity = quantity + ? WHERE batch_id = ?")
+                ->execute([$remaining_qty, $batch['batch_id']]);
+
+            $updated = true;
+            $remaining_qty = 0; // All quantity is restored
+        }
+
+        // If no existing batch with the barcode was found, create a new one
+        if (!$updated && $remaining_qty > 0) {
+            $pdo->prepare("INSERT INTO ingredient_batch (ingredient_id, barcode, quantity, expiry_date, created_at) VALUES (?, ?, ?, '0000-00-00', NOW())")
+                ->execute([$ingredient_id, $barcode, $remaining_qty]);
+        }
+
+        // Delete the waste record
+        $pdo->prepare("DELETE FROM ingredient_waste WHERE waste_id = ?")->execute([$waste_id]);
+
+        $pdo->commit();
+        return ['success' => true, 'message' => 'Waste record deleted and ingredients restored successfully'];
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        return ['success' => false, 'message' => 'Error deleting waste: ' . $e->getMessage()];
+    }
+}
+
+// INGREDIENT WASTE END
 
 //USER START
 function addUser($pdo) {

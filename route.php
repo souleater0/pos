@@ -25,6 +25,9 @@ switch ($route){
     case "discount":
         require 'admin/views/product-management/discount.php';
         break;
+    case "product-waste":
+        require 'admin/views/waste-management/product_waste.php';
+        break;
     case "ingredient-waste":
         require 'admin/views/waste-management/ingredient_waste.php';
         break;

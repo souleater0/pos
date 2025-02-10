@@ -171,7 +171,7 @@ $route = $_GET['route'] ?? 'home';
             <?php } ?>
             </div>
             <?php } ?>
-            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_waste')){?>
+            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_product_waste') || userHasPermission($pdo, $_SESSION["user_id"], 'manage_ingredient_waste')){?>
             <li>
               <span class="sidebar-divider lg"></span>
             </li>
@@ -179,7 +179,13 @@ $route = $_GET['route'] ?? 'home';
               <iconify-icon icon="solar:menu-dots-linear" class="nav-small-cap-icon fs-4"></iconify-icon>
               <span class="hide-menu text-uppercase">waste management</span>
             </li>
-            <div class="collapse <?php echo ($route == 'ingredient-waste' )? 'show' : ''; ?>" " id="collapseWaste">
+            <div class="collapse <?php echo ($route == 'product-waste' || $route == 'ingredient-waste')? 'show' : ''; ?>" " id="collapseWaste">
+            <li class="sidebar-item">
+              <a class="sidebar-link <?php echo ($route == 'product-waste' )? 'active' : ''; ?>" " href="index.php?route=product-waste" aria-expanded="false">
+                <iconify-icon icon="hugeicons:waste-restore"></iconify-icon>
+                <span class="hide-menu">Product Waste</span>
+              </a>
+            </li>
             <li class="sidebar-item">
               <a class="sidebar-link <?php echo ($route == 'ingredient-waste' )? 'active' : ''; ?>" " href="index.php?route=ingredient-waste" aria-expanded="false">
                 <iconify-icon icon="guidance:waste"></iconify-icon>

@@ -60,7 +60,7 @@ $(document).ready(function () {
         {
             data: 'status',  
             title: 'Status',
-            className: "text-center",
+            className: "text-start",
             render: function(data, type, row) {
                 return data === 1 
                     ? '<span class="badge bg-danger">Voided</span>' 
@@ -69,7 +69,7 @@ $(document).ready(function () {
         },
         {
             data: null,
-            className: "text-center",
+            className: "text-start",
             title: 'Action',
             render: function(data, type, row) {
                 var voidButton = row.status === 0 
@@ -264,7 +264,7 @@ function generateReceiptContent(transactionData) {
             </div>
             <div style='border-top: none; border-bottom: 1px dashed black; padding: 2px 0;'>
                 <p style="margin:5px 2px;"><b>Invoice:</b> ${transactionData.invoice_no} <br><b>Cashier:</b> ${transactionData.cashier_name} <br><b>Date:</b> ${transactionData.transaction_date}</p>
-                <p><b>Customer:</b> ${transactionData.customer_name} <br><b>Payment Type:</b> ${transactionData.payment_type}</p>
+                <p style="margin:5px 2px;"><b>Customer:</b> ${transactionData.customer_name} <br><b>Payment Type:</b> ${transactionData.payment_type}</p>
             </div>
             <table style='width: 100%; border-collapse: collapse; margin-top: 5px; text-align: left;'>
                 <tr><th>Item</th><th>Qty</th><th>Price</th><th>Amt</th></tr>
