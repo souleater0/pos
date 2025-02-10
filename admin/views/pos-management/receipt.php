@@ -220,9 +220,9 @@ $(document).ready(function () {
     printWindow.print();
 
     // Optional: Close the print window after printing
-    setTimeout(function() {
-        printWindow.close();
-    }, 1000);
+    // setTimeout(function() {
+    //     printWindow.close();
+    // }, 1000);
 });
 
 

@@ -1965,13 +1965,13 @@ function generateReport($pdo) {
                                        ti.item_name, ti.item_qty, ti.item_price, ti.item_discount_amt
                                     FROM transactions t
                                     JOIN transactions_item ti ON t.transaction_id = ti.transaction_id
-                                    WHERE t.transaction_date BETWEEN :startDate AND :endDate");
+                                    WHERE t.transaction_date BETWEEN :startDate AND :endDate AND status = '0'");
         $salesStmt->bindParam(':startDate', $startDate);
         $salesStmt->bindParam(':endDate', $endDate);
         $salesStmt->execute();
         $salesData = $salesStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Fetch waste data
+        // Fetch ingredient waste data
         $wasteStmt = $pdo->prepare("SELECT iw.waste_id, iw.ingredient_name, iw.ingredient_price, iw.quantity_wasted, iw.units, iw.reason, iw.reported_by
                                     FROM ingredient_waste iw
                                     WHERE iw.created_at BETWEEN :startDate AND :endDate");
@@ -1980,17 +1980,79 @@ function generateReport($pdo) {
         $wasteStmt->execute();
         $wasteData = $wasteStmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // Fetch product waste data
+        $productWasteStmt = $pdo->prepare("SELECT pw.waste_id, pw.product_name, pw.product_price, pw.quantity_wasted, pw.reason, pw.reported_by
+                                           FROM product_waste pw
+                                           WHERE pw.created_at BETWEEN :startDate AND :endDate");
+        $productWasteStmt->bindParam(':startDate', $startDate);
+        $productWasteStmt->bindParam(':endDate', $endDate);
+        $productWasteStmt->execute();
+        $productWasteData = $productWasteStmt->fetchAll(PDO::FETCH_ASSOC);
+
         // Generate HTML content for the reports
         $salesHtml = generateSalesSummaryHTML($salesData);
         $wasteHtml = generateWasteSummaryHTML($wasteData);
+        $productWasteHtml = generateProductWasteSummaryHTML($productWasteData);
 
         // Return the result as an array
-        return ['success' => true, 'message' => 'Report has been Generated!', 'sales_html' => $salesHtml, 'waste_html' => $wasteHtml];
+        return ['success' => true, 'message' => 'Report has been Generated!', 'sales_html' => $salesHtml, 'waste_html' => $wasteHtml, 'product_waste_html' => $productWasteHtml];
     } catch (PDOException $e) {
         error_log("Error: " . $e->getMessage());
         return ['success' => false, 'message' => 'Error generating report'];
     }
 }
+
+function generateProductWasteSummaryHTML($productWasteData) {
+    if (empty($productWasteData)) {
+        return '<p>No product waste data available for the selected date range.</p>';
+    }
+
+    // Initialize totals
+    $totalProductWastePrice = 0;
+    $totalProductWastedQty = 0;
+    $productWasteSummary = [];
+
+    // Loop through product waste data and calculate totals
+    foreach ($productWasteData as $waste) {
+        $totalProductWastePrice += $waste['product_price'] * $waste['quantity_wasted'];
+        $totalProductWastedQty += $waste['quantity_wasted'];
+
+        if (!isset($productWasteSummary[$waste['product_name']])) {
+            $productWasteSummary[$waste['product_name']] = ['qty' => 0, 'total' => 0];
+        }
+        $productWasteSummary[$waste['product_name']]['qty'] += $waste['quantity_wasted'];
+        $productWasteSummary[$waste['product_name']]['total'] += $waste['product_price'] * $waste['quantity_wasted'];
+    }
+
+    // Start the receipt-like HTML for product waste data
+    $html = '<div style="width: 100%; margin: 0 auto; font-family: monospace; font-size: 10px;color:black;">';
+    $html .= '<div style="text-align: center; font-weight: bold;">Product Waste Report</div>';
+    $html .= '<div style="border-bottom: 1px dashed #000; margin: 5px 0;"></div>';
+    $html .= '<div>Date: ' . date('Y-m-d H:i:s') . '</div>';
+    $html .= '<div style="margin: 10px 0;"></div>';
+
+    // Total product waste price and quantity information
+    $html .= '<div><strong>Total Product Waste Price:</strong> ' . number_format($totalProductWastePrice, 2) . '</div>';
+    $html .= '<div><strong>Total Product Wasted Quantity:</strong> ' . $totalProductWastedQty . '</div>';
+    $html .= '<div style="margin: 10px 0;"></div>';
+
+    // Loop through product-wise waste summary
+    $html .= '<div><strong>Product-wise Waste Summary:</strong></div>';
+    foreach ($productWasteSummary as $productName => $productSummary) {
+        $html .= '<div>';
+        $html .= '<div>Product: ' . htmlspecialchars($productName) . '</div>';
+        $html .= '<div>Qty Wasted: ' . $productSummary['qty'] . '</div>';
+        $html .= '<div>Total Waste Price: ' . number_format($productSummary['total'], 2) . '</div>';
+        $html .= '<div style="border-bottom: 1px dashed #000; margin: 5px 0;"></div>';
+    }
+
+    // Close the receipt HTML
+    $html .= '<div style="text-align: center; font-weight: bold;">Thank you!</div>';
+    $html .= '</div>';
+
+    return $html;
+}
+
 
 function generateSalesSummaryHTML($salesData) {
     if (empty($salesData)) {
@@ -2106,5 +2168,125 @@ function generateWasteSummaryHTML($wasteData) {
 
     return $html;
 }
+
+function fetchDashboardData() {
+    global $pdo;
+
+    // Get the start and end dates from the POST request
+    $startDate = $_POST['startDate'];
+    $endDate = $_POST['endDate'];
+
+    // Initialize an array to store data
+    $data = array();
+
+    // ==========================
+    // 🔹 Query 1: Total Sales
+    // ==========================
+    $query = "SELECT SUM(transaction_grandtotal) AS totalSales 
+              FROM transactions 
+              WHERE status = 0 AND transaction_date BETWEEN :startDate AND :endDate";
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(':startDate', $startDate);
+    $stmt->bindParam(':endDate', $endDate);
+    $stmt->execute();
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $data['totalSales'] = $result['totalSales'] ?? 0;
+
+    // ==========================
+    // 🔹 Query 2: Product Waste Cost
+    // ==========================
+    $query = "SELECT SUM(pwc.product_price * pwc.quantity_wasted) AS productWasteCost 
+              FROM product_waste pwc 
+              WHERE pwc.created_at BETWEEN :startDate AND :endDate";
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(':startDate', $startDate);
+    $stmt->bindParam(':endDate', $endDate);
+    $stmt->execute();
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $data['productWasteCost'] = $result['productWasteCost'] ?? 0;
+
+    // ==========================
+    // 🔹 Query 3: Ingredient Waste Cost
+    // ==========================
+    $query = "SELECT SUM(iw.ingredient_price * iw.quantity_wasted) AS ingredientWasteCost 
+              FROM ingredient_waste iw 
+              WHERE iw.created_at BETWEEN :startDate AND :endDate";
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(':startDate', $startDate);
+    $stmt->bindParam(':endDate', $endDate);
+    $stmt->execute();
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $data['ingredientWasteCost'] = $result['ingredientWasteCost'] ?? 0;
+
+    // ==========================
+    // 🔹 Query 4: Sales Over Time Data
+    // ==========================
+    $query = "SELECT DATE(transaction_date) AS saleDate, SUM(transaction_grandtotal) AS totalSales
+              FROM transactions 
+              WHERE status = 0 AND transaction_date BETWEEN :startDate AND :endDate
+              GROUP BY DATE(transaction_date)
+              ORDER BY DATE(transaction_date) ASC";
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(':startDate', $startDate);
+    $stmt->bindParam(':endDate', $endDate);
+    $stmt->execute();
+    $salesData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Prepare Sales Over Time Data for Chart
+    $data['salesData'] = array();
+    $data['salesDates'] = array();
+    foreach ($salesData as $row) {
+        $data['salesData'][] = $row['totalSales'];
+        $data['salesDates'][] = $row['saleDate'];
+    }
+
+    // ==========================
+    // 🔹 Query 5: Top-Selling Products
+    // ==========================
+    $query = "SELECT ti.item_name, SUM(ti.item_qty) AS totalQuantity
+              FROM transactions_item ti
+              JOIN transactions t ON ti.transaction_id = t.transaction_id
+              WHERE t.transaction_date BETWEEN :startDate AND :endDate
+              GROUP BY ti.item_name
+              ORDER BY totalQuantity DESC
+              LIMIT 5";
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(':startDate', $startDate);
+    $stmt->bindParam(':endDate', $endDate);
+    $stmt->execute();
+    $topSellingProducts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Prepare Top-Selling Products Data for Chart
+    $data['topSellingProducts'] = array();
+    $data['topSellingQuantities'] = array();
+    foreach ($topSellingProducts as $product) {
+        $data['topSellingProducts'][] = $product['item_name'];
+        $data['topSellingQuantities'][] = $product['totalQuantity'];
+    }
+
+    // ==========================
+    // 🔹 Query 6: Sales Payment Type Breakdown
+    // ==========================
+    $queryPaymentType = "SELECT payment_type, SUM(transaction_grandtotal) AS total
+                         FROM transactions 
+                         WHERE transaction_date BETWEEN :startDate AND :endDate
+                         GROUP BY payment_type";
+    $stmtPaymentType = $pdo->prepare($queryPaymentType);
+    $stmtPaymentType->bindParam(':startDate', $startDate);
+    $stmtPaymentType->bindParam(':endDate', $endDate);
+    $stmtPaymentType->execute();
+    $paymentTypes = $stmtPaymentType->fetchAll(PDO::FETCH_ASSOC);
+
+    // Prepare Payment Type Data for Chart
+    $data['salesPaymentTypes'] = array();
+    $data['salesPaymentData'] = array();
+    foreach ($paymentTypes as $payment) {
+        $data['salesPaymentTypes'][] = $payment['payment_type'];
+        $data['salesPaymentData'][] = $payment['total'];
+    }
+
+    return $data;
+}
+
 
 ?>

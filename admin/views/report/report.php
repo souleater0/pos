@@ -55,6 +55,10 @@
                 <h5>Sales Report</h5>
                 <!-- Sales data will be injected here -->
               </div>
+              <div id="productSection" class="mt-4">
+                <h5>Waste Report</h5>
+                <!-- Waste data will be injected here -->
+              </div>
               <div id="wasteSection" class="mt-4">
                 <h5>Waste Report</h5>
                 <!-- Waste data will be injected here -->
@@ -111,7 +115,7 @@ $(document).ready(function() {
       data: formData,
       dataType: 'json',
       success: function(response) {
-        console.log(response); // Debugging response to ensure data is correct
+        //console.log(response); // Debugging response to ensure data is correct
         
         if (response.success) {
           // Show the report panel
@@ -124,11 +128,19 @@ $(document).ready(function() {
             $('#salesSection').html('<p>No sales data available.</p>');
           }
 
+          if (response.product_waste_html) {
+            $('#productSection').html(response.product_waste_html);  // Inject waste report message
+          } else {
+            $('#productSection').html('<p>No Product Waste Available.</p>');
+          }
+
           if (response.waste_html) {
             $('#wasteSection').html(response.waste_html);  // Inject waste report message
           } else {
-            $('#wasteSection').html('<p>No waste data available for the selected date range.</p>');
+            $('#wasteSection').html('<p>No Ingredient Waste Available.</p>');
           }
+
+          
 
           // Show the print section
           $('#printSection').show();

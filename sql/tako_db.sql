@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 09, 2025 at 01:10 AM
+-- Generation Time: Feb 10, 2025 at 10:34 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -116,9 +116,8 @@ CREATE TABLE `ingredient_batch` (
 --
 
 INSERT INTO `ingredient_batch` (`batch_id`, `ingredient_id`, `barcode`, `quantity`, `expiry_date`, `created_at`, `updated_at`) VALUES
-(4, 1, 'AWT', 8, '0000-00-00', '2025-02-06 12:46:18', '2025-02-06 12:46:28'),
-(5, 1, NULL, 3, '2025-02-07', '2025-02-06 12:47:59', '2025-02-06 12:47:59'),
-(6, 1, NULL, 2, '2025-02-15', '2025-02-06 12:48:09', '2025-02-06 12:48:09');
+(21, 1, 'AWTS', 5, '0000-00-00', '2025-02-09 23:58:59', '2025-02-10 14:49:42'),
+(22, 1, NULL, 5, '0000-00-00', '2025-02-10 14:49:41', '2025-02-10 14:49:43');
 
 -- --------------------------------------------------------
 
@@ -128,6 +127,7 @@ INSERT INTO `ingredient_batch` (`batch_id`, `ingredient_id`, `barcode`, `quantit
 
 CREATE TABLE `ingredient_waste` (
   `waste_id` int(11) NOT NULL,
+  `ingredient_barcode` varchar(255) DEFAULT NULL,
   `ingredient_name` varchar(255) DEFAULT NULL,
   `ingredient_price` decimal(10,2) DEFAULT NULL,
   `quantity_wasted` decimal(10,2) DEFAULT NULL,
@@ -137,6 +137,15 @@ CREATE TABLE `ingredient_waste` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `ingredient_waste`
+--
+
+INSERT INTO `ingredient_waste` (`waste_id`, `ingredient_barcode`, `ingredient_name`, `ingredient_price`, `quantity_wasted`, `units`, `reason`, `reported_by`, `created_at`, `updated_at`) VALUES
+(24, NULL, 'Batter Flour', 20.00, 5.00, 'kgs', 'Rejects', 'Jerome', '2025-02-10 00:01:11', '2025-02-10 00:12:41'),
+(25, 'AWTS', 'Batter Flour', 20.00, 1.00, 'kgs', 'Dirty', 'Jerome', '2025-02-10 00:01:11', '2025-02-10 00:16:57'),
+(26, 'AWTS', 'Batter Flour', 20.00, 2.00, 'kgs', 'Reject Item', 'Jerome', '2025-02-10 14:45:10', '2025-02-10 14:45:10');
 
 -- --------------------------------------------------------
 
@@ -163,10 +172,11 @@ INSERT INTO `modules` (`id`, `module_name`, `description`) VALUES
 (6, 'Categories', 'done'),
 (7, 'Units', 'done'),
 (8, 'Discounts', 'done'),
-(9, 'Waste', NULL),
-(10, 'Report', NULL),
-(11, 'User', NULL),
-(12, 'Role', NULL);
+(9, 'Product Waste', NULL),
+(10, 'Ingredient Waste', NULL),
+(11, 'Report', NULL),
+(12, 'User', NULL),
+(13, 'Role', NULL);
 
 -- --------------------------------------------------------
 
@@ -229,19 +239,23 @@ INSERT INTO `permissions` (`id`, `permission_name`, `description`, `module_id`) 
 (22, 'create_discount', 'CREATE', 8),
 (23, 'update_discount', 'UPDATE', 8),
 (24, 'delete_discount', 'DELETE', 8),
-(25, 'manage_waste', 'MANAGE', 9),
-(26, 'create_waste', 'CREATE', 9),
-(27, 'update_waste', 'UPDATE', 9),
-(28, 'delete_waste', 'DELETE', 9),
-(29, 'manage_report', 'MANAGE', 10),
-(30, 'manage_user', 'MANAGE', 11),
-(31, 'create_user', 'CREATE', 11),
-(32, 'update_user', 'UPDATE', 11),
-(33, 'delete_user', 'DELETE', 11),
-(34, 'manage_role', 'MANAGE', 12),
-(35, 'create_role', 'CREATE', 12),
-(36, 'update_role', 'UPDATE', 12),
-(37, 'delete_role', 'DELETE', 12);
+(25, 'manage_product_waste', 'MANAGE', 9),
+(26, 'create_product_waste', 'CREATE', 9),
+(27, 'update_product_waste', 'UPDATE', 9),
+(28, 'delete_product_waste', 'DELETE', 9),
+(29, 'manage_ingredient_waste', 'MANAGE', 10),
+(30, 'create_ingredient_waste', 'CREATE', 10),
+(31, 'update_ingredient_waste', 'UPDATE', 10),
+(32, 'delete_ingredient_waste', 'DELETE', 10),
+(33, 'manage_report', 'MANAGE', 11),
+(34, 'manage_user', 'MANAGE', 12),
+(35, 'create_user', 'CREATE', 12),
+(36, 'update_user', 'UPDATE', 12),
+(37, 'delete_user', 'DELETE', 12),
+(38, 'manage_role', 'MANAGE', 13),
+(39, 'create_role', 'CREATE', 13),
+(40, 'update_role', 'UPDATE', 13),
+(41, 'delete_role', 'DELETE', 13);
 
 -- --------------------------------------------------------
 
@@ -288,9 +302,18 @@ CREATE TABLE `product_waste` (
   `product_price` decimal(10,2) DEFAULT NULL,
   `quantity_wasted` int(11) DEFAULT NULL,
   `reason` varchar(255) DEFAULT NULL,
+  `reported_by` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `product_waste`
+--
+
+INSERT INTO `product_waste` (`waste_id`, `product_name`, `product_price`, `quantity_wasted`, `reason`, `reported_by`, `created_at`, `updated_at`) VALUES
+(2, 'Baby Octo Takoyaki', 120.00, 2, 'Went to the Sea', 'Jerome', '2025-02-09 18:59:11', '2025-02-10 00:12:30'),
+(3, 'Bacon Cheesy Takoyaki', 105.00, 1, 'Over Cooked', 'Jerome', '2025-02-09 19:51:48', '2025-02-10 00:12:32');
 
 -- --------------------------------------------------------
 
@@ -364,8 +387,13 @@ INSERT INTO `role_permissions` (`role_id`, `permission_id`) VALUES
 (1, 35),
 (1, 36),
 (1, 37),
+(1, 38),
+(1, 39),
+(1, 40),
+(1, 41),
 (5, 2),
-(5, 3);
+(5, 3),
+(5, 33);
 
 -- --------------------------------------------------------
 
@@ -418,11 +446,9 @@ CREATE TABLE `transactions` (
 --
 
 INSERT INTO `transactions` (`transaction_id`, `invoice_no`, `cashier_name`, `customer_name`, `payment_type`, `transaction_paid`, `transaction_subtotal`, `transaction_discount`, `transaction_change`, `transaction_grandtotal`, `transaction_date`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'TKY00001', 'admin', 'Joe Mama', 'Cash', 500.00, 502.00, 25.10, 23.10, 476.90, '2025-02-09 06:46:06', 0, '2025-02-08 22:46:06', '2025-02-09 00:07:52'),
-(2, 'TKY00002', 'admin', 'Marites', 'Cash', 300.00, 225.00, 0.00, 75.00, 225.00, '2025-02-09 06:51:43', 0, '2025-02-08 22:51:43', '2025-02-08 22:51:43'),
-(3, 'TKY00003', 'admin', 'N/A', 'Cash', 500.00, 502.00, 25.10, 23.10, 476.90, '2025-02-09 07:08:27', 0, '2025-02-08 23:08:27', '2025-02-08 23:08:27'),
-(4, 'TKY00004', 'admin', 'Spider Man', 'Cash', 500.00, 502.00, 25.10, 23.10, 476.90, '2025-02-09 07:26:50', 0, '2025-02-08 23:26:50', '2025-02-08 23:26:50'),
-(5, 'TKY00005', 'admin', 'Jake', 'Cash', 250.00, 225.00, 0.00, 25.00, 225.00, '2025-02-09 07:38:00', 0, '2025-02-08 23:38:00', '2025-02-08 23:38:00');
+(1, 'TKY00001', 'admin', 'N/A', 'Cash', 400.00, 310.00, 0.00, 90.00, 310.00, '2025-02-10 11:37:33', 0, '2025-02-10 03:37:33', '2025-02-10 16:56:49'),
+(2, 'TKY00002', 'admin', 'Joe', 'Gcash', 500.00, 502.00, 25.10, 23.10, 476.90, '2025-02-11 02:43:04', 0, '2025-02-10 18:43:04', '2025-02-10 18:43:04'),
+(3, 'TKY00003', 'admin', 'N/A', 'Cash', 100.00, 85.00, 0.00, 15.00, 85.00, '2025-02-11 02:43:36', 0, '2025-02-10 18:43:36', '2025-02-10 18:43:36');
 
 -- --------------------------------------------------------
 
@@ -447,19 +473,13 @@ CREATE TABLE `transactions_item` (
 --
 
 INSERT INTO `transactions_item` (`id`, `transaction_id`, `item_name`, `item_qty`, `item_price`, `item_discount_amt`, `item_discount_percentage`, `item_subtotal`, `created_at`) VALUES
-(1, 1, 'Baby Octo Takoyaki', 2, 120.00, 12.00, 5, 228.00, '2025-02-08 22:46:06'),
-(2, 1, 'Bacon Cheesy Takoyaki', 2, 105.00, 21.00, 10, 189.00, '2025-02-08 22:46:06'),
-(3, 1, 'Ultimate Cheesy Takoyaki', 1, 85.00, 0.00, 0, 85.00, '2025-02-08 22:46:06'),
-(4, 2, 'Baby Octo Takoyaki', 1, 120.00, 0.00, 0, 120.00, '2025-02-08 22:51:43'),
-(5, 2, 'Bacon Cheesy Takoyaki', 1, 105.00, 0.00, 0, 105.00, '2025-02-08 22:51:43'),
-(6, 3, 'Baby Octo Takoyaki', 2, 120.00, 12.00, 5, 228.00, '2025-02-08 23:08:27'),
-(7, 3, 'Bacon Cheesy Takoyaki', 2, 105.00, 21.00, 10, 189.00, '2025-02-08 23:08:27'),
-(8, 3, 'Ultimate Cheesy Takoyaki', 1, 85.00, 0.00, 0, 85.00, '2025-02-08 23:08:27'),
-(9, 4, 'Baby Octo Takoyaki', 2, 120.00, 12.00, 5, 228.00, '2025-02-08 23:26:50'),
-(10, 4, 'Bacon Cheesy Takoyaki', 2, 105.00, 21.00, 10, 189.00, '2025-02-08 23:26:50'),
-(11, 4, 'Ultimate Cheesy Takoyaki', 1, 85.00, 0.00, 0, 85.00, '2025-02-08 23:26:50'),
-(12, 5, 'Baby Octo Takoyaki', 1, 120.00, 0.00, 0, 120.00, '2025-02-08 23:38:00'),
-(13, 5, 'Bacon Cheesy Takoyaki', 1, 105.00, 0.00, 0, 105.00, '2025-02-08 23:38:00');
+(1, 1, 'Baby Octo Takoyaki', 1, 120.00, 0.00, 0, 120.00, '2025-02-10 03:37:33'),
+(2, 1, 'Bacon Cheesy Takoyaki', 1, 105.00, 0.00, 0, 105.00, '2025-02-10 03:37:33'),
+(3, 1, 'Ultimate Cheesy Takoyaki', 1, 85.00, 0.00, 0, 85.00, '2025-02-10 03:37:33'),
+(4, 2, 'Baby Octo Takoyaki', 2, 120.00, 12.00, 5, 228.00, '2025-02-10 18:43:04'),
+(5, 2, 'Bacon Cheesy Takoyaki', 2, 105.00, 21.00, 10, 189.00, '2025-02-10 18:43:04'),
+(6, 2, 'Ultimate Cheesy Takoyaki', 1, 85.00, 0.00, 0, 85.00, '2025-02-10 18:43:04'),
+(7, 3, 'Ultimate Cheesy Takoyaki', 1, 85.00, 0.00, 0, 85.00, '2025-02-10 18:43:36');
 
 -- --------------------------------------------------------
 
@@ -512,7 +532,7 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `password`, `display_name`, `role_id`, `isEnabled`, `created_at`, `updated_at`) VALUES
-(1, 'admin', '$2y$10$Yvn5wPKG1D1ovcMe5wM2lemqHaX40cKBJ7ybknP0rtYFkVSYt0MmK', 'Jerome De Lara', 1, 1, '2024-05-08 12:30:37', '2024-08-12 03:45:55'),
+(1, 'admin', '$2y$10$Yvn5wPKG1D1ovcMe5wM2lemqHaX40cKBJ7ybknP0rtYFkVSYt0MmK', 'Jerome', 1, 1, '2024-05-08 12:30:37', '2025-02-10 00:12:18'),
 (19, 'cash', '$2y$10$.3Gx1hTxGEWw4rYM7KtHue2IBlYADXiygNO.VyK1o18t7i3Ua5hY2', 'cash', 5, 1, '2025-02-06 22:36:35', NULL);
 
 --
@@ -655,13 +675,13 @@ ALTER TABLE `ingredient`
 -- AUTO_INCREMENT for table `ingredient_batch`
 --
 ALTER TABLE `ingredient_batch`
-  MODIFY `batch_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `batch_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
 -- AUTO_INCREMENT for table `ingredient_waste`
 --
 ALTER TABLE `ingredient_waste`
-  MODIFY `waste_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `waste_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
 -- AUTO_INCREMENT for table `modules`
@@ -679,7 +699,7 @@ ALTER TABLE `payment_type`
 -- AUTO_INCREMENT for table `permissions`
 --
 ALTER TABLE `permissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
 
 --
 -- AUTO_INCREMENT for table `product`
@@ -691,7 +711,7 @@ ALTER TABLE `product`
 -- AUTO_INCREMENT for table `product_waste`
 --
 ALTER TABLE `product_waste`
-  MODIFY `waste_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `waste_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `roles`
@@ -709,13 +729,13 @@ ALTER TABLE `system_option`
 -- AUTO_INCREMENT for table `transactions`
 --
 ALTER TABLE `transactions`
-  MODIFY `transaction_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `transaction_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `transactions_item`
 --
 ALTER TABLE `transactions_item`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `unit`

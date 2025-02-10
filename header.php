@@ -47,6 +47,10 @@ $route = $_GET['route'] ?? 'home';
     <link rel="stylesheet" href="assets/libs/bootstrap-select/dist/css/bootstrap-select.min.css">
     <script src="assets/libs/bootstrap-select/dist/js/bootstrap-select.min.js"></script>
 
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+
   <!-- TOASTR -->
   <link rel="stylesheet" href="assets/libs/toastr/css/toastr.min.css">
   <script src="assets/libs/toastr/js/toastr.min.js"></script>
@@ -113,7 +117,7 @@ $route = $_GET['route'] ?? 'home';
             <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_receipt')){?>
             <li class="sidebar-item">
               <a class="sidebar-link <?php echo ($route == 'receipt' )? 'active' : ''; ?>" " href="index.php?route=receipt" aria-expanded="false">
-                <iconify-icon icon="mdi:network-pos"></iconify-icon>
+                <iconify-icon icon="lucide:receipt"></iconify-icon>
                 <span class="hide-menu">RECEIPT</span>
               </a>
             </li>
@@ -260,12 +264,12 @@ $route = $_GET['route'] ?? 'home';
                 <i class="ti ti-menu-2"></i>
               </a>
             </li>
-            <li class="nav-item">
+            <!-- <li class="nav-item">
               <a class="nav-link " href="javascript:void(0)">
                 <iconify-icon icon="solar:bell-linear" class="fs-6"></iconify-icon>
                 <div class="notification bg-primary rounded-circle"></div>
               </a>
-            </li>
+            </li> -->
           </ul>
           <div class="navbar-collapse justify-content-end px-0" id="navbarNav">
             <ul class="navbar-nav flex-row ms-auto align-items-center justify-content-end">

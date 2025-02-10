@@ -666,6 +666,12 @@ $(document).ready(function () {
                             
                             // Reset the DataTable
                             table.clear().draw();
+
+                            $('#totalSubtotal').text('₱0.00');
+                            $('#totalDiscount').text('₱0.00');
+                            $('#totalBalance').text('₱0.00');
+                            $('#totalChange').text('₱0.00');
+                            updateTotal();
                         },
                         error: function(xhr, status, error) {
                             console.error("Error creating transaction:", error);

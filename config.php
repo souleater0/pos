@@ -6,10 +6,10 @@ $dbUser = 'root'; // Change this to your database username
 $dbPass = ''; // Change this to your database password
 
 //HOSTING
-// $dbHost = 'sql311.infinityfree.com'; // Change this to your database host
-// $dbName = 'if0_38268102_tako_db'; // Change this to your database name
-// $dbUser = 'if0_38268102'; // Change this to your database username
-// $dbPass = '5VxvQPevj6Em'; // Change this to your database password
+// $dbHost = 'localhost'; // Change this to your database host
+// $dbName = 'u426435337_takodb'; // Change this to your database name
+// $dbUser = 'u426435337_tako'; // Change this to your database username
+// $dbPass = '@Takoyame2025'; // Change this to your database password
 
 try {
     // Create a PDO instance

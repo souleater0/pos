@@ -40,6 +40,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode($loginResult);
             break;
 
+        case 'fetchDashboardData':    
+            // Call the function to get the dashboard data based on the provided date range
+            $result = fetchDashboardData($pdo);
+            echo json_encode($result, JSON_UNESCAPED_SLASHES);
+            break;
+            
         case 'fetchProducts':
             // Fetch products using the function
             $result = getProducts($pdo);
