@@ -41,55 +41,68 @@
 <script>
 $(document).ready(function () {
     var csrfToken = "<?php echo $_SESSION['csrf_token']; ?>";
-
+    var userPermissions = {
+        manage_receipt: <?php echo userHasPermission($pdo, $_SESSION["user_id"], 'manage_receipt') ? 'true' : 'false'; ?>,
+        void_receipt: <?php echo userHasPermission($pdo, $_SESSION["user_id"], 'void_receipt') ? 'true' : 'false'; ?>
+    };
     // Initialize DataTable for transactions
     var table = $('#transactionsTable').DataTable({
-    responsive: true,
-    select: false,
-    order: [[0, 'desc']],
-    ajax: {
-        url: 'admin/process/table.php?table_type=transactions',
-        dataSrc: 'data'
-    },
-    columns: [
-        { data: 'invoice_no', title: 'Invoice#', className: "text-start" },
-        { data: 'customer_name', title: 'Customer Name', className: "text-start" },
-        { data: 'payment_type', title: 'Payment Method', className: "text-start" },
-        { data: 'transaction_date', title: 'Date', className: "text-start" },
-        { data: 'transaction_grandtotal', title: 'Amount', className: "text-start" },
-        {
-            data: 'status',  
-            title: 'Status',
-            className: "text-start",
-            render: function(data, type, row) {
-                return data === 1 
-                    ? '<span class="badge bg-danger">Voided</span>' 
-                    : '<span class="badge bg-success">Active</span>';
-            }
+        responsive: true,
+        select: false,
+        autoWidth: false,
+        order: [[0, 'desc']],
+        ajax: {
+            url: 'admin/process/table.php?table_type=transactions',
+            dataSrc: 'data'
         },
-        {
-            data: null,
-            className: "text-start",
-            title: 'Action',
-            render: function(data, type, row) {
-                var voidButton = row.status === 0 
-                    ? `<button class="btn btn-danger btn-sm btn-void" data-invoice="${row.invoice_no}">
-                        <i class="fa-solid fa-ban"></i> Void
-                       </button>` 
-                    : `<button class="btn btn-success btn-sm btn-void" data-invoice="${row.invoice_no}">
-                        <i class="fa-solid fa-check"></i> Unvoid
-                       </button>`;
+        columns: [
+            { data: 'invoice_no', title: 'Invoice#', className: "text-start" },
+            { data: 'customer_name', title: 'Customer Name', className: "text-start" },
+            { data: 'payment_type', title: 'Payment Method', className: "text-start" },
+            { data: 'transaction_date', title: 'Date', className: "text-start" },
+            { data: 'transaction_grandtotal', title: 'Amount', className: "text-start" },
+            {
+                data: 'status',  
+                title: 'Status',
+                className: "text-start",
+                render: function(data, type, row) {
+                    return data === 1 
+                        ? '<span class="badge bg-danger">Voided</span>' 
+                        : '<span class="badge bg-success">Active</span>';
+                }
+            },
+            {
+                data: null,
+                className: "text-start",
+                title: 'Action',
+                render: function(data, type, row) {
+                    var viewButton = '';
+                    var voidButton = '';
 
-                return `
-                    <button class="btn btn-info btn-sm btn-view-receipt" data-invoice="${row.invoice_no}">
-                        <i class="fa-regular fa-eye"></i> View
-                    </button>
-                    ${voidButton}
-                `;
+                    // Check for permissions before displaying buttons
+                    if (userPermissions.manage_receipt) {
+                        viewButton = `<button class='btn btn-info btn-sm btn-view-receipt' data-invoice="${row.invoice_no}">
+                                        <i class='fa-regular fa-eye'></i> View
+                                    </button>&nbsp;`;
+                    }
+
+                    if (userPermissions.void_receipt) {
+                        voidButton = row.status === 0 
+                            ? `<button class='btn btn-danger btn-sm btn-void' data-invoice="${row.invoice_no}">
+                                <i class='fa-solid fa-ban'></i> Void
+                            </button>`
+                            : `<button class='btn btn-success btn-sm btn-void' data-invoice="${row.invoice_no}">
+                                <i class='fa-solid fa-check'></i> Unvoid
+                            </button>`;
+                    }
+
+                    return viewButton + voidButton;
+                }
             }
-        }
-    ]
-});
+        ]
+    });
+
+
 
 
     // Event handler for 'View Receipt' button click
@@ -299,20 +312,20 @@ function generateReceiptContent(transactionData) {
     });
 
     // Calculate the totals
-    let globalDiscount = parseFloat(transactionData.global_discount) || 0;
-    totalDiscount = (totalAmountAfterDiscount * globalDiscount) / 100;
-    let totalBalance = totalAmountAfterDiscount - totalDiscount;
-    let totalChange = parseFloat(transactionData.transaction_paid) - totalBalance;
+    // let globalDiscount = parseFloat(transactionData.global_discount) || 0;
+    // totalDiscount = (totalAmountAfterDiscount * globalDiscount) / 100;
+    // let totalBalance = totalAmountAfterDiscount;
+    // let totalChange = parseFloat(transactionData.transaction_paid) - totalBalance;
 
     receiptContent += `
             </table>
             <div style='border-top: 1px dashed black; padding: 5px 0; margin:5px 2px;'>
                 <p>
-                    <b>Subtotal:</b> ₱${totalAmountAfterDiscount.toFixed(2)}<br>
-                    <b>Discount:</b> ₱${totalDiscount.toFixed(2)}<br>
-                    <b>Total:</b> ₱${totalBalance.toFixed(2)}<br>
+                    <b>Subtotal:</b> ₱${parseFloat(transactionData.transaction_subtotal).toFixed(2)}<br>
+                    <b>Discount:</b> -₱${parseFloat(transactionData.transaction_discount).toFixed(2)}<br>
+                    <b>Grand Total:</b> ₱${parseFloat(transactionData.transaction_grandtotal).toFixed(2)}<br>
                     <b>Paid:</b> ₱${parseFloat(transactionData.transaction_paid).toFixed(2)}<br>
-                    <b>Change:</b> ₱${totalChange.toFixed(2)}
+                    <b>Change:</b> ₱${parseFloat(transactionData.transaction_change).toFixed(2)}
                 </p>
             </div>
             <p style='text-align: center; margin: 5px 0;'>Thank you for your purchase!</p>

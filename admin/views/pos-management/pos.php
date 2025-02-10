@@ -654,6 +654,18 @@ $(document).ready(function () {
 
                             // Show the print confirmation modal
                             $('#confirm-print-modal').modal('show');
+                                // Clear the cart array
+                            cart = [];
+                            
+                            // Reset the form inputs
+                            $('#customer-name').val('');
+                            $('#payment-method').val('');
+                            $('#pay-amount').val('');
+                            $('#discount').prop('selectedIndex', 1);
+                            $('#discount').selectpicker('refresh'); 
+                            
+                            // Reset the DataTable
+                            table.clear().draw();
                         },
                         error: function(xhr, status, error) {
                             console.error("Error creating transaction:", error);

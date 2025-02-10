@@ -219,6 +219,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = deleteIngredientWaste($pdo);
             echo json_encode($result);
             break;
+
+        case 'generate_report':
+            checkPermission($pdo, 'manage_report');
+            
+            // Call the function to generate the report, it will now handle POST data internally
+            $result = generateReport($pdo);
+            
+            // Return the result (HTML content of the report)
+            echo json_encode($result, JSON_UNESCAPED_SLASHES);
+            break;
             
         case 'addUser':
             checkPermission($pdo, 'create_user');

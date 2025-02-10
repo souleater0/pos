@@ -180,16 +180,37 @@ $route = $_GET['route'] ?? 'home';
               <span class="hide-menu text-uppercase">waste management</span>
             </li>
             <div class="collapse <?php echo ($route == 'product-waste' || $route == 'ingredient-waste')? 'show' : ''; ?>" " id="collapseWaste">
+            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_product_waste')){?>
             <li class="sidebar-item">
               <a class="sidebar-link <?php echo ($route == 'product-waste' )? 'active' : ''; ?>" " href="index.php?route=product-waste" aria-expanded="false">
                 <iconify-icon icon="hugeicons:waste-restore"></iconify-icon>
                 <span class="hide-menu">Product Waste</span>
               </a>
             </li>
+            <?php } ?>
+            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_ingredient_waste')){?>
             <li class="sidebar-item">
               <a class="sidebar-link <?php echo ($route == 'ingredient-waste' )? 'active' : ''; ?>" " href="index.php?route=ingredient-waste" aria-expanded="false">
                 <iconify-icon icon="guidance:waste"></iconify-icon>
                 <span class="hide-menu">Ingredient Waste</span>
+              </a>
+            </li>
+            <?php } ?>
+            </div>
+            <?php } ?>
+            <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_report')){?>
+            <li>
+              <span class="sidebar-divider lg"></span>
+            </li>
+            <li class="nav-small-cap" data-bs-toggle="collapse" data-bs-target="#collapseReport" aria-expanded="<?php echo ($route == 'ingredient-waste') ? 'true' : 'false'; ?>" aria-controls="collapseUser">
+              <iconify-icon icon="solar:menu-dots-linear" class="nav-small-cap-icon fs-4"></iconify-icon>
+              <span class="hide-menu text-uppercase">report management</span>
+            </li>
+            <div class="collapse <?php echo ($route == 'report')? 'show' : ''; ?>" " id="collapseReport">
+            <li class="sidebar-item">
+              <a class="sidebar-link <?php echo ($route == 'report' )? 'active' : ''; ?>" " href="index.php?route=report" aria-expanded="false">
+                <iconify-icon icon="fluent-mdl2:c-r-m-report"></iconify-icon>
+                <span class="hide-menu">Report</span>
               </a>
             </li>
             </div>

@@ -347,6 +347,8 @@ function viewReceipt($pdo) {
                 'customer_name' => $transaction['customer_name'],
                 'payment_type' => $transaction['payment_type'],
                 'transaction_date' => $transaction['transaction_date'],
+                'transaction_subtotal' => $transaction['transaction_subtotal'],
+                'transaction_discount' => $transaction['transaction_discount'],
                 'transaction_grandtotal' => $transaction['transaction_grandtotal'],
                 'transaction_paid' => $transaction['transaction_paid'],
                 'transaction_change' => $transaction['transaction_change'],
@@ -1933,5 +1935,176 @@ function deleteRole($pdo) {
     }
 }
 //ROLE END
+function generateReport($pdo) {
+    try {
+        // Get the date range from POST data
+        $reportType = $_POST['report_type'] ?? 'single'; 
+        $startDate = '';
+        $endDate = '';
+
+        // Handle date range logic
+        if ($reportType === 'custom') {
+            $startDate = $_POST['from_date'] ?? '';
+            $endDate = $_POST['to_date'] ?? '';
+        } else {
+            $startDate = $_POST['date_input'] ?? '';
+            $endDate = $startDate;
+        }
+
+        // Ensure both dates are provided
+        if (empty($startDate) || empty($endDate)) {
+            return ['success' => false, 'message' => 'Date range is required'];
+        }
+
+        // Format dates
+        $startDate = date('Y-m-d', strtotime($startDate));
+        $endDate = date('Y-m-d', strtotime($endDate));
+
+        // Fetch sales data
+        $salesStmt = $pdo->prepare("SELECT t.transaction_id, t.transaction_subtotal, t.transaction_discount, t.transaction_grandtotal, 
+                                       ti.item_name, ti.item_qty, ti.item_price, ti.item_discount_amt
+                                    FROM transactions t
+                                    JOIN transactions_item ti ON t.transaction_id = ti.transaction_id
+                                    WHERE t.transaction_date BETWEEN :startDate AND :endDate");
+        $salesStmt->bindParam(':startDate', $startDate);
+        $salesStmt->bindParam(':endDate', $endDate);
+        $salesStmt->execute();
+        $salesData = $salesStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Fetch waste data
+        $wasteStmt = $pdo->prepare("SELECT iw.waste_id, iw.ingredient_name, iw.ingredient_price, iw.quantity_wasted, iw.units, iw.reason, iw.reported_by
+                                    FROM ingredient_waste iw
+                                    WHERE iw.created_at BETWEEN :startDate AND :endDate");
+        $wasteStmt->bindParam(':startDate', $startDate);
+        $wasteStmt->bindParam(':endDate', $endDate);
+        $wasteStmt->execute();
+        $wasteData = $wasteStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Generate HTML content for the reports
+        $salesHtml = generateSalesSummaryHTML($salesData);
+        $wasteHtml = generateWasteSummaryHTML($wasteData);
+
+        // Return the result as an array
+        return ['success' => true, 'message' => 'Report has been Generated!', 'sales_html' => $salesHtml, 'waste_html' => $wasteHtml];
+    } catch (PDOException $e) {
+        error_log("Error: " . $e->getMessage());
+        return ['success' => false, 'message' => 'Error generating report'];
+    }
+}
+
+function generateSalesSummaryHTML($salesData) {
+    if (empty($salesData)) {
+        return '<p>No sales data available for the selected date range.</p>';
+    }
+
+    // Initialize totals
+    $totalSale = 0;
+    $totalItemDiscount = 0;
+    $totalDiscount = 0;
+    $totalItemsSold = 0;
+    $itemsSummary = [];
+
+    // Loop through sales data and calculate totals
+    foreach ($salesData as $sale) {
+        $totalSale += $sale['transaction_grandtotal'];
+        $totalDiscount += $sale['transaction_discount'];
+        $totalItemDiscount += $sale['item_discount_amt'];  // Total item discount
+        $totalItemsSold += $sale['item_qty'];
+
+        if (!isset($itemsSummary[$sale['item_name']])) {
+            $itemsSummary[$sale['item_name']] = ['qty' => 0, 'total' => 0];
+        }
+        $itemsSummary[$sale['item_name']]['qty'] += $sale['item_qty'];
+        $itemsSummary[$sale['item_name']]['total'] += $sale['item_qty'] * $sale['item_price'];
+    }
+
+    // Start the receipt-like HTML for sales data
+    $html = '<div style="width: 100%; margin: 0 auto; font-family: monospace; font-size: 10px;color:black;">';
+
+    // Company Info (Header)
+    $html .= "<h4 style='text-align: center; margin: 5px 0;'>Takoyame Takoyaki</h4>";
+    $html .= "<div style='border-top: 1px dashed black; padding: 2px 0;'>";
+    $html .= "<p style='margin:5px 2px;'><b>Address:</b> Sto. Nino Plaridel, Bulacan <br><b>Contact No:</b> 09392887055</p>";
+    $html .= "</div>";
+    // Sales Report Title and Date
+    $html .= '<div style="text-align: center; font-weight: bold;">Sales Report</div>';
+    $html .= '<div style="border-bottom: 1px dashed #000; margin: 5px 0;"></div>';
+    $html .= '<div>Date: ' . date('Y-m-d H:i:s') . '</div>';
+    $html .= '<div style="margin: 10px 0;"></div>';
+
+    // Total sales and discount information
+    $html .= '<div><strong>Total Sale:</strong> ' . number_format($totalSale, 2) . '</div>';
+    $html .= '<div><strong>Total Item Discount:</strong> ' . number_format($totalItemDiscount, 2) . '</div>';
+    $html .= '<div><strong>Total Discount:</strong> ' . number_format($totalDiscount, 2) . '</div>';
+    $html .= '<div><strong>Total Items Sold:</strong> ' . $totalItemsSold . '</div>';
+    $html .= '<div style="margin: 10px 0;"></div>';
+
+    // Loop through item-wise sales summary
+    $html .= '<div><strong>Item-wise Summary:</strong></div>';
+    foreach ($itemsSummary as $itemName => $itemSummary) {
+        $html .= '<div>';
+        $html .= '<div>Item: ' . htmlspecialchars($itemName) . '</div>';
+        $html .= '<div>Qty Sold: ' . $itemSummary['qty'] . '</div>';
+        $html .= '<div>Total: ' . number_format($itemSummary['total'], 2) . '</div>';
+        $html .= '<div style="border-bottom: 1px dashed #000; margin: 5px 0;"></div>';
+    }
+
+    // Close the receipt HTML
+    $html .= '<div style="text-align: center; font-weight: bold;">Thank you!</div>';
+    $html .= '</div>';
+
+    return $html;
+}
+
+function generateWasteSummaryHTML($wasteData) {
+    if (empty($wasteData)) {
+        return '<p>No waste data available for the selected date range.</p>';
+    }
+
+    // Initialize totals
+    $totalWastePrice = 0;
+    $totalWastedQty = 0;
+    $itemsWasteSummary = [];
+
+    // Loop through waste data and calculate totals
+    foreach ($wasteData as $waste) {
+        $totalWastePrice += $waste['ingredient_price'] * $waste['quantity_wasted'];
+        $totalWastedQty += $waste['quantity_wasted'];
+
+        if (!isset($itemsWasteSummary[$waste['ingredient_name']])) {
+            $itemsWasteSummary[$waste['ingredient_name']] = ['qty' => 0, 'total' => 0];
+        }
+        $itemsWasteSummary[$waste['ingredient_name']]['qty'] += $waste['quantity_wasted'];
+        $itemsWasteSummary[$waste['ingredient_name']]['total'] += $waste['ingredient_price'] * $waste['quantity_wasted'];
+    }
+
+    // Start the receipt-like HTML for waste data
+    $html = '<div style="width: 100%; margin: 0 auto; font-family: monospace; font-size: 10px;color:black;">';
+    $html .= '<div style="text-align: center; font-weight: bold;">Waste Report</div>';
+    $html .= '<div style="border-bottom: 1px dashed #000; margin: 5px 0;"></div>';
+    $html .= '<div>Date: ' . date('Y-m-d H:i:s') . '</div>';
+    $html .= '<div style="margin: 10px 0;"></div>';
+
+    // Total waste price and quantity information
+    $html .= '<div><strong>Total Waste Price:</strong> ' . number_format($totalWastePrice, 2) . '</div>';
+    $html .= '<div><strong>Total Wasted Quantity:</strong> ' . $totalWastedQty . '</div>';
+    $html .= '<div style="margin: 10px 0;"></div>';
+
+    // Loop through item-wise waste summary
+    $html .= '<div><strong>Waste Item-wise Summary:</strong></div>';
+    foreach ($itemsWasteSummary as $ingredientName => $ingredientSummary) {
+        $html .= '<div>';
+        $html .= '<div>Ingredient: ' . htmlspecialchars($ingredientName) . '</div>';
+        $html .= '<div>Qty Wasted: ' . $ingredientSummary['qty'] . '</div>';
+        $html .= '<div>Total Waste Price: ' . number_format($ingredientSummary['total'], 2) . '</div>';
+        $html .= '<div style="border-bottom: 1px dashed #000; margin: 5px 0;"></div>';
+    }
+
+    // Close the receipt HTML
+    $html .= '<div style="text-align: center; font-weight: bold;">Thank you!</div>';
+    $html .= '</div>';
+
+    return $html;
+}
 
 ?>
