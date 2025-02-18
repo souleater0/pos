@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 10, 2025 at 10:34 PM
+-- Generation Time: Feb 18, 2025 at 08:35 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -421,6 +421,32 @@ INSERT INTO `system_option` (`id`, `option_name`, `option_value`, `created_at`, 
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `trail_logs`
+--
+
+CREATE TABLE `trail_logs` (
+  `id` int(11) NOT NULL,
+  `user_name` varchar(255) DEFAULT NULL,
+  `user_action` varchar(255) DEFAULT NULL,
+  `user_module` varchar(255) DEFAULT NULL,
+  `user_detail` text DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `trail_logs`
+--
+
+INSERT INTO `trail_logs` (`id`, `user_name`, `user_action`, `user_module`, `user_detail`, `created_at`, `updated_at`) VALUES
+(1, 'admin', 'Login', 'Authentication', 'User logged in successfully', '2025-02-18 06:17:14', '2025-02-18 06:17:14'),
+(2, 'admin', 'Sale Processed', 'POS', 'Transaction added with <span class=\"badge bg-success\">Invoice No: TKY00006</span>', '2025-02-18 07:25:27', '2025-02-18 07:28:17'),
+(3, 'admin', 'Sale Processed', 'POS', 'Transaction added with <span class=\"badge bg-success\">Invoice No: TKY00007</span>', '2025-02-18 07:28:41', '2025-02-18 07:28:41'),
+(4, 'admin', 'Logout', 'Authentication', 'User has logged out', '2025-02-18 07:28:58', '2025-02-18 07:28:58');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `transactions`
 --
 
@@ -448,7 +474,11 @@ CREATE TABLE `transactions` (
 INSERT INTO `transactions` (`transaction_id`, `invoice_no`, `cashier_name`, `customer_name`, `payment_type`, `transaction_paid`, `transaction_subtotal`, `transaction_discount`, `transaction_change`, `transaction_grandtotal`, `transaction_date`, `status`, `created_at`, `updated_at`) VALUES
 (1, 'TKY00001', 'admin', 'N/A', 'Cash', 400.00, 310.00, 0.00, 90.00, 310.00, '2025-02-10 11:37:33', 0, '2025-02-10 03:37:33', '2025-02-10 16:56:49'),
 (2, 'TKY00002', 'admin', 'Joe', 'Gcash', 500.00, 502.00, 25.10, 23.10, 476.90, '2025-02-11 02:43:04', 0, '2025-02-10 18:43:04', '2025-02-10 18:43:04'),
-(3, 'TKY00003', 'admin', 'N/A', 'Cash', 100.00, 85.00, 0.00, 15.00, 85.00, '2025-02-11 02:43:36', 0, '2025-02-10 18:43:36', '2025-02-10 18:43:36');
+(3, 'TKY00003', 'admin', 'N/A', 'Cash', 100.00, 85.00, 0.00, 15.00, 85.00, '2025-02-11 02:43:36', 0, '2025-02-10 18:43:36', '2025-02-10 18:43:36'),
+(4, 'TKY00004', 'admin', 'N/A', 'Cash', 200.00, 190.00, 0.00, 10.00, 190.00, '2025-02-18 13:56:58', 0, '2025-02-18 05:56:58', '2025-02-18 05:56:58'),
+(5, 'TKY00005', 'admin', 'N/A', 'Cash', 200.00, 190.00, 0.00, 10.00, 190.00, '2025-02-18 14:12:47', 0, '2025-02-18 06:12:47', '2025-02-18 06:12:47'),
+(6, 'TKY00006', 'admin', 'N/A', 'Cash', 200.00, 190.00, 0.00, 10.00, 190.00, '2025-02-18 15:25:27', 0, '2025-02-18 07:25:27', '2025-02-18 07:25:27'),
+(7, 'TKY00007', 'admin', 'N/A', 'Cash', 100.00, 65.00, 0.00, 35.00, 65.00, '2025-02-18 15:28:41', 0, '2025-02-18 07:28:41', '2025-02-18 07:28:41');
 
 -- --------------------------------------------------------
 
@@ -479,7 +509,14 @@ INSERT INTO `transactions_item` (`id`, `transaction_id`, `item_name`, `item_qty`
 (4, 2, 'Baby Octo Takoyaki', 2, 120.00, 12.00, 5, 228.00, '2025-02-10 18:43:04'),
 (5, 2, 'Bacon Cheesy Takoyaki', 2, 105.00, 21.00, 10, 189.00, '2025-02-10 18:43:04'),
 (6, 2, 'Ultimate Cheesy Takoyaki', 1, 85.00, 0.00, 0, 85.00, '2025-02-10 18:43:04'),
-(7, 3, 'Ultimate Cheesy Takoyaki', 1, 85.00, 0.00, 0, 85.00, '2025-02-10 18:43:36');
+(7, 3, 'Ultimate Cheesy Takoyaki', 1, 85.00, 0.00, 0, 85.00, '2025-02-10 18:43:36'),
+(8, 4, 'Bacon Cheesy Takoyaki', 1, 105.00, 0.00, 0, 105.00, '2025-02-18 05:56:58'),
+(9, 4, 'Ultimate Cheesy Takoyaki', 1, 85.00, 0.00, 0, 85.00, '2025-02-18 05:56:58'),
+(10, 5, 'Bacon Cheesy Takoyaki', 1, 105.00, 0.00, 0, 105.00, '2025-02-18 06:12:47'),
+(11, 5, 'Ultimate Cheesy Takoyaki', 1, 85.00, 0.00, 0, 85.00, '2025-02-18 06:12:47'),
+(12, 6, 'Bacon Cheesy Takoyaki', 1, 105.00, 0.00, 0, 105.00, '2025-02-18 07:25:27'),
+(13, 6, 'Ultimate Cheesy Takoyaki', 1, 85.00, 0.00, 0, 85.00, '2025-02-18 07:25:27'),
+(14, 7, 'Authentic Takoyaki', 1, 65.00, 0.00, 0, 65.00, '2025-02-18 07:28:41');
 
 -- --------------------------------------------------------
 
@@ -624,6 +661,12 @@ ALTER TABLE `system_option`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `trail_logs`
+--
+ALTER TABLE `trail_logs`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `transactions`
 --
 ALTER TABLE `transactions`
@@ -726,16 +769,22 @@ ALTER TABLE `system_option`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
+-- AUTO_INCREMENT for table `trail_logs`
+--
+ALTER TABLE `trail_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
 -- AUTO_INCREMENT for table `transactions`
 --
 ALTER TABLE `transactions`
-  MODIFY `transaction_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `transaction_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `transactions_item`
 --
 ALTER TABLE `transactions_item`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `unit`

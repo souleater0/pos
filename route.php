@@ -34,6 +34,9 @@ switch ($route){
     case "report":
         require 'admin/views/report/report.php';
         break;
+    case "audit-trail":
+        require 'admin/views/report/audit.php';
+        break;
     case "user-management":
         require 'admin/views/user-management/users.php';
         break;

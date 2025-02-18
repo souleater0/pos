@@ -217,6 +217,12 @@ $route = $_GET['route'] ?? 'home';
                 <span class="hide-menu">Report</span>
               </a>
             </li>
+            <li class="sidebar-item">
+              <a class="sidebar-link <?php echo ($route == 'audit-trail' )? 'active' : ''; ?>" " href="index.php?route=audit-trail" aria-expanded="false">
+                <iconify-icon icon="fluent-mdl2:c-r-m-report"></iconify-icon>
+                <span class="hide-menu">Audit Trail</span>
+              </a>
+            </li>
             </div>
             <?php } ?>
             <?php if(userHasPermission($pdo, $_SESSION["user_id"], 'manage_user') || userHasPermission($pdo, $_SESSION["user_id"], 'manage_role')){?>

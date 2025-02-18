@@ -228,14 +228,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         case 'generate_report':
             checkPermission($pdo, 'manage_report');
-            
             // Call the function to generate the report, it will now handle POST data internally
             $result = generateReport($pdo);
-            
             // Return the result (HTML content of the report)
             echo json_encode($result, JSON_UNESCAPED_SLASHES);
             break;
-            
+        
         case 'addUser':
             checkPermission($pdo, 'create_user');
             $result = addUser($pdo);  
@@ -277,6 +275,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = deleteRole($pdo);  // Your existing deleteRole function
             echo json_encode($result);
             break;
+            
 
         default:
             echo json_encode(['success' => false, 'message' => 'Invalid action']);

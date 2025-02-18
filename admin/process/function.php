@@ -1,4 +1,59 @@
 <?php
+
+
+function addAudit($pdo, $name, $action_log, $module_name, $log_details) {
+    try {
+        // Check for a recent identical log to prevent duplicates (5 seconds window)
+        $checkStmt = $pdo->prepare("
+            SELECT COUNT(*) FROM trail_logs 
+            WHERE user_name = :user_name 
+              AND user_action = :user_action 
+              AND user_module = :user_module 
+              AND user_detail = :user_detail
+              AND created_at > (NOW() - INTERVAL 5 SECOND)
+        ");
+
+        // Bind parameters for the check
+        $checkStmt->bindValue(':user_name', $name);
+        $checkStmt->bindValue(':user_action', $action_log);
+        $checkStmt->bindValue(':user_module', $module_name);
+        $checkStmt->bindValue(':user_detail', $log_details);
+        $checkStmt->execute();
+
+        // If a duplicate is found, don't insert
+        if ($checkStmt->fetchColumn() > 0) {
+            error_log("addAudit: Duplicate entry detected. Skipping insert.");
+            return;
+        }
+
+        // If no duplicate, proceed with insert
+        $stmt = $pdo->prepare("
+            INSERT INTO trail_logs (
+                user_name, user_action, user_module, user_detail, created_at, updated_at
+            ) VALUES (
+                :user_name, :user_action, :user_module, :user_detail, NOW(), NOW()
+            )
+        ");
+
+        // Bind parameters for the insert
+        $stmt->bindValue(':user_name', $name);
+        $stmt->bindValue(':user_action', $action_log);
+        $stmt->bindValue(':user_module', $module_name);
+        $stmt->bindValue(':user_detail', $log_details);
+
+        // Execute the insert and check for success
+        if ($stmt->execute()) {
+            error_log("addAudit: Insert successful");
+        } else {
+            error_log("addAudit: Insert failed - " . implode(", ", $stmt->errorInfo()));
+        }
+    } catch (Exception $e) {
+        // Log error
+        error_log("Error in addAudit: " . $e->getMessage());
+    }
+}
+
+
 function userHasPermission($pdo, $userId, $permissionName) {
     try {
         // Prepare the SQL query to check if the user has the specified permission
@@ -198,6 +253,9 @@ function loginProcess($pdo) {
         $_SESSION["user_id"] = $user["id"];
         $_SESSION["username"] = $user["username"];
         $_SESSION["display_name"] = $user["display_name"];
+
+        addAudit($pdo, $user["username"], 'Login', 'Authentication', 'User logged in successfully');
+
         return array(
             'success' => true,
             'message' => 'Login successful.',
@@ -298,6 +356,9 @@ function addTransaction($pdo) {
                 throw new Exception("Failed to insert item data: " . implode(", ", $stmt->errorInfo()));
             }
         }
+
+        // Call addAudit() to log the transaction action
+        addAudit($pdo, $cartData['cashierName'], 'Sale Processed', 'POS', 'Transaction added with <span class="badge bg-success">Invoice No: ' . $invoiceNumber. '</span>');
 
         // Commit the transaction after both inserts
         $pdo->commit();
@@ -2287,6 +2348,7 @@ function fetchDashboardData() {
 
     return $data;
 }
+
 
 
 ?>
