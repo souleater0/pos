@@ -63,6 +63,12 @@ $(document).ready(function() {
         extend: 'print',
         title: 'USER LOGS',
         exportOptions: { columns: ":visible:not(.noExport)" }
+      },
+      {
+            text: "Export to Word",
+            action: function(e, dt, node, config) {
+                exportToWord();
+            }
       }
     ],
     ajax: {
@@ -78,6 +84,58 @@ $(document).ready(function() {
       { data: 'created_at', title: 'Timestamp', className: 'text-start' }
     ]
   });
+
+  function exportToWord() {
+      var table = document.getElementById("auditTable");
+
+      var html = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+            xmlns:w='urn:schemas-microsoft-com:office:word' 
+            xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+          <meta charset='utf-8'>
+          <style>
+              body {
+                  font-family: Arial, sans-serif;
+              }
+              table {
+                  width: 100%;
+                  border-collapse: collapse;
+                  margin: 20px 0;
+                  font-size: 14px;
+                  text-align: left;
+              }
+              th, td {
+                  border: 1px solid #000;
+                  padding: 8px 12px;
+              }
+              th {
+                  background-color: #f2f2f2;
+                  font-weight: bold;
+                  text-align: center;
+              }
+              td {
+                  text-align: right;
+              }
+          </style>
+      </head>
+      <body>
+          <h2 style="text-align: center;">Logs Report</h2>
+          <table>
+              ${table.innerHTML}
+          </table>
+      </body>
+      </html>`;
+
+      var blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "Logs_Report.doc";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+  }
 
   // Initialize DateTime picker for min and max date inputs
   let minDate = new DateTime('#min', { format: 'MMMM Do YYYY h:mm A' });

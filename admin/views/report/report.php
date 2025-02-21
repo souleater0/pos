@@ -151,6 +151,12 @@ $(document).ready(function () {
               return getExportTitle();
             },
             exportOptions: { columns: ":visible:not(.noExport)" }
+          },
+          {
+            text: "Export to Word",
+            action: function(e, dt, node, config) {
+                exportToWord();
+            }
           }
         ],
         data: [],
@@ -165,32 +171,83 @@ $(document).ready(function () {
             { data: "transaction_grandtotal", title: "Grand Total", className: 'text-start text-dark'}
         ],
         footerCallback: function (row, data, start, end, display) {
-    var api = this.api();
+          var api = this.api();
 
-    // Function to sum all column values (full dataset, not just displayed page)
-    function sumColumn(index) {
-        return api
-            .column(index, { search: "applied" }) // Use full dataset
-            .data()
-            .reduce((a, b) => (parseFloat(a) || 0) + (parseFloat(b) || 0), 0);
-    }
+          // Function to sum all column values (full dataset, not just displayed page)
+          function sumColumn(index) {
+              return api
+                  .column(index, { search: "applied" }) // Use full dataset
+                  .data()
+                  .reduce((a, b) => (parseFloat(a) || 0) + (parseFloat(b) || 0), 0);
+          }
 
-    // Column order based on table structure:
-    let totalItemsSold = sumColumn(2);  // Qty Column Index
-    let totalItemDiscount = sumColumn(4);  // Discount Amt Column Index
-    let totalSale = sumColumn(5);  // Subtotal Column Index
-    let totalDiscount = sumColumn(6);  // Discount Column Index
-    let grandTotal = sumColumn(7);  // Grand Total Column Index
+          // Column order based on table structure:
+          let totalItemsSold = sumColumn(2);  // Qty Column Index
+          let totalItemDiscount = sumColumn(4);  // Discount Amt Column Index
+          let totalSale = sumColumn(5);  // Subtotal Column Index
+          let totalDiscount = sumColumn(6);  // Discount Column Index
+          let grandTotal = sumColumn(7);  // Grand Total Column Index
 
-    // Update footer text
-    $("#totalItemsSold").text(totalItemsSold);
-    $("#totalItemDiscount").text(totalItemDiscount.toFixed(2));
-    $("#totalSale").text(totalSale.toFixed(2));
-    $("#totalDiscount").text(totalDiscount.toFixed(2));
-    $("#totalGrandTotal").text(grandTotal.toFixed(2)); // Added Grand Total
-}
-
+          // Update footer text
+          $("#totalItemsSold").text(totalItemsSold);
+          $("#totalItemDiscount").text(totalItemDiscount.toFixed(2));
+          $("#totalSale").text(totalSale.toFixed(2));
+          $("#totalDiscount").text(totalDiscount.toFixed(2));
+          $("#totalGrandTotal").text(grandTotal.toFixed(2)); // Added Grand Total
+      }
     });
+
+    function exportToWord() {
+      var table = document.getElementById("salesTable");
+
+      var html = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+            xmlns:w='urn:schemas-microsoft-com:office:word' 
+            xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+          <meta charset='utf-8'>
+          <style>
+              body {
+                  font-family: Arial, sans-serif;
+              }
+              table {
+                  width: 100%;
+                  border-collapse: collapse;
+                  margin: 20px 0;
+                  font-size: 14px;
+                  text-align: left;
+              }
+              th, td {
+                  border: 1px solid #000;
+                  padding: 8px 12px;
+              }
+              th {
+                  background-color: #f2f2f2;
+                  font-weight: bold;
+                  text-align: center;
+              }
+              td {
+                  text-align: right;
+              }
+          </style>
+      </head>
+      <body>
+          <h2 style="text-align: center;">Sales Report</h2>
+          <table>
+              ${table.innerHTML}
+          </table>
+      </body>
+      </html>`;
+
+      var blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "Sales_Report.doc";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+  }
 
     $('#reportForm').submit(function (event) {
         event.preventDefault();
