@@ -231,6 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Call the function to generate the report, it will now handle POST data internally
             $result = generateReport($pdo);
             // Return the result (HTML content of the report)
+            header('Content-Type: application/json');
             echo json_encode($result, JSON_UNESCAPED_SLASHES);
             break;
         
@@ -276,6 +277,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode($result);
             break;
             
+
+        case 'getNotifications':
+            $result = getNotifications($pdo);  // Your existing updateRole function
+            header('Content-Type: application/json');
+            echo json_encode($result);
+            break;
 
         default:
             echo json_encode(['success' => false, 'message' => 'Invalid action']);

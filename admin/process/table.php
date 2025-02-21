@@ -67,6 +67,14 @@
                 $sql = 'SELECT * FROM trail_logs
                         ORDER BY id DESC';
                 break;
+            case 'prod_waste_report':
+                $sql = 'SELECT * FROM product_waste
+                        ORDER BY waste_id DESC';
+                break;
+            case 'ing_waste_report':
+                $sql = 'SELECT * FROM ingredient_waste
+                        ORDER BY waste_id DESC';
+                break;
             case 'users':
                 $sql = 'SELECT
                 a.id,

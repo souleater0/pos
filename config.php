@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('Asia/Manila');
 // Database configuration
 $dbHost = 'localhost'; // Change this to your database host
 $dbName = 'tako_db'; // Change this to your database name
@@ -23,6 +24,9 @@ try {
 
     // Optionally, set character set to utf8
     $pdo->exec("SET NAMES 'utf8'");
+
+    // Set MySQL timezone to UTC+8 (for Philippines)
+    $pdo->exec("SET time_zone = '+08:00'");
 
     // echo "db connected";
 } catch (PDOException $e) {

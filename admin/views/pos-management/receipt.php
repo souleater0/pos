@@ -51,6 +51,44 @@ $(document).ready(function () {
         select: false,
         autoWidth: false,
         order: [[0, 'desc']],
+        dom: 'Bfrtip', // Include export buttons
+        buttons: [
+            {
+                extend: 'copy',
+                title: function() {
+                    return getExportTitle();
+                },
+                exportOptions: { columns: ":visible:not(.noExport)" }
+            },
+            {
+                extend: 'csv',
+                title: function() {
+                    return getExportTitle();
+                },
+                exportOptions: { columns: ":visible:not(.noExport)" }
+            },
+            {
+                extend: 'excel',
+                title: function() {
+                    return getExportTitle();
+                },
+                exportOptions: { columns: ":visible:not(.noExport)" }
+            },
+            {
+                extend: 'pdf',
+                title: function() {
+                    return getExportTitle();
+                },
+                exportOptions: { columns: ":visible:not(.noExport)" }
+            },
+            {
+                extend: 'print',
+                title: function() {
+                    return getExportTitle();
+                },
+                exportOptions: { columns: ":visible:not(.noExport)" }
+            }
+        ],
         ajax: {
             url: 'admin/process/table.php?table_type=transactions',
             dataSrc: 'data'
@@ -73,7 +111,7 @@ $(document).ready(function () {
             },
             {
                 data: null,
-                className: "text-start",
+                className: "text-start noExport",
                 title: 'Action',
                 render: function(data, type, row) {
                     var viewButton = '';
@@ -335,7 +373,9 @@ function generateReceiptContent(transactionData) {
     return { content: receiptContent };
 }
 
-
+function getExportTitle() {
+    return "Transaction_Report_" + new Date().toISOString().slice(0, 10);
+}
 
 </script>
 

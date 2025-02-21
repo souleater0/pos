@@ -1,3 +1,4 @@
+<?php if (userHasPermission($pdo, $_SESSION["user_id"], 'manage_report')) { ?>
 <div class="body-wrapper-inner">
   <div class="container-fluid">
     <div class="card shadow-sm">
@@ -36,6 +37,7 @@ $(document).ready(function() {
     autoWidth: false,
     footer: false,
     dom: 'Bfrtip',
+    order: [[0, 'desc']],
     buttons: [
       {
         extend: 'copy',
@@ -124,5 +126,13 @@ $(document).ready(function() {
     });
   });
 });
-
 </script>
+<?php } else { ?>
+<div class="d-flex justify-content-center align-items-center vh-100">
+  <div class="container text-center">
+    <iconify-icon icon="maki:caution" width="50" height="50"></iconify-icon>
+    <h2 class="fw-bolder">User does not have permission!</h2>
+    <p>We are sorry, your account does not have permission to access this page.</p>
+  </div>
+</div>
+<?php } ?>
